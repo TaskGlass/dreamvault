@@ -170,7 +170,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[60vh]">
+      <div className="flex flex-col justify-center items-center min-h-[60vh] w-full min-w-0 flex-1">
         <div className="relative w-16 h-16">
           <div className="absolute inset-0 rounded-full border-t-2 border-purple-500 animate-spin"></div>
           <div className="absolute inset-3 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 opacity-75 blur-sm"></div>
@@ -184,7 +184,7 @@ export default function DashboardPage() {
 
   if (dbError) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[60vh] max-w-md mx-auto text-center">
+      <div className="flex flex-col justify-center items-center min-h-[60vh] w-full min-w-0 flex-1">
         <Database className="h-12 w-12 text-purple-500 mb-4" />
         <h2 className="text-2xl font-bold mb-2">Database Setup Required</h2>
         <p className="text-muted-foreground mb-6">
@@ -219,9 +219,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="space-y-6 md:space-y-8 w-full min-w-0">
       {/* Welcome section with user info */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-background/60 p-4 md:p-6 rounded-xl border border-purple-300/10 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-background/60 p-4 md:p-6 rounded-xl border border-purple-300/10 shadow-sm w-full min-w-0">
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14 md:h-16 md:w-16 border-2 border-purple-200/20">
             <AvatarImage
@@ -256,7 +256,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full min-w-0">
         <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
           <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500/10 to-indigo-500/10 rounded-bl-full"></div>
           <CardHeader className="pb-2 md:pb-3">
@@ -319,7 +319,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Tabs Container */}
-      <div className="w-full bg-background/30 backdrop-blur-sm rounded-lg border border-purple-300/10 overflow-hidden">
+      <div className="w-full min-w-0 bg-background/30 backdrop-blur-sm rounded-lg border border-purple-300/10 overflow-hidden">
         {/* Tab Buttons */}
         <div className="flex w-full">
           <button
@@ -346,12 +346,11 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Fixed-size container to maintain consistent width */}
-        <div className="w-full" style={{ minHeight: "400px" }}>
-          {/* Recent Dreams Tab */}
+        {/* Tab Content Container */}
+        <div className="w-full min-w-0">
           {activeTab === "recent" && (
-            <div className="p-4 md:p-6 w-full">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="p-4 md:p-6 w-full min-w-0">
+              <div className="flex items-center justify-between mb-4 md:mb-6 w-full">
                 <h2 className="text-lg md:text-xl font-semibold">Recent Dreams</h2>
                 <Button variant="ghost" size="sm" asChild className="gap-1">
                   <Link href="/dashboard/journal">
@@ -375,7 +374,7 @@ export default function DashboardPage() {
               </div>
 
               {recentDreams.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 w-full min-w-0">
                   {recentDreams.map((dream) => (
                     <DreamCard
                       key={dream.id}
@@ -395,7 +394,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-8 min-h-[250px] border border-dashed border-purple-300/20 rounded-lg">
+                <div className="flex flex-col items-center justify-center p-8 min-h-[250px] border border-dashed border-purple-300/20 rounded-lg w-full">
                   <div className="rounded-full bg-purple-500/10 p-3 mb-4">
                     <Moon className="h-6 w-6 text-purple-500" />
                   </div>
@@ -408,10 +407,9 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Insights Tab */}
           {activeTab === "insights" && (
-            <div className="p-4 md:p-6 w-full">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div className="p-4 md:p-6 w-full min-w-0">
+              <div className="flex items-center justify-between mb-4 md:mb-6 w-full">
                 <h2 className="text-lg md:text-xl font-semibold">Dream Insights</h2>
                 <Button variant="ghost" size="sm" asChild className="gap-1">
                   <Link href="/dashboard/insights">
@@ -434,7 +432,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 w-full min-w-0">
                 <InsightCard
                   title="Recurring Themes"
                   description={
@@ -470,7 +468,7 @@ export default function DashboardPage() {
 
       {/* Subscription Status */}
       {profile && (
-        <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden shadow-sm mb-0">
+        <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden shadow-sm mb-0 w-full min-w-0">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base md:text-lg">

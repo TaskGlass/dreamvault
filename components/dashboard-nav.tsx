@@ -23,7 +23,7 @@ import { getUserProfile } from "@/lib/dream-service"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 
-export function DashboardNav() {
+export function DashboardNav({ className, onNavItemClick }: { className?: string; onNavItemClick?: () => void }) {
   const pathname = usePathname()
   const { signOut, user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
@@ -113,7 +113,7 @@ export function DashboardNav() {
   }
 
   return (
-    <Sidebar variant="inset" collapsible="icon" className="text-base">
+    <Sidebar variant="inset" collapsible="icon" className={`text-base hidden md:block ${className || ""}`}>
       <SidebarHeader className="flex flex-col items-center justify-center p-4">
         <Link href="/dashboard" className="flex items-center">
           <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
@@ -134,6 +134,7 @@ export function DashboardNav() {
                     isActive={pathname === item.href}
                     tooltip={item.title}
                     className="text-base py-3"
+                    onClick={onNavItemClick}
                   >
                     <Link href={item.href} className="flex items-center">
                       <item.icon className="h-5 w-5 mr-3" />
@@ -152,6 +153,7 @@ export function DashboardNav() {
             <Button
               className="w-full justify-start gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-sm py-4"
               asChild
+              onClick={onNavItemClick}
             >
               <Link href="/dashboard/interpret">
                 <Plus className="h-5 w-5" />

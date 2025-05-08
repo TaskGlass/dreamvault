@@ -13,18 +13,18 @@ export default function DashboardLayout({
       {/* Client component for inactivity logout */}
       <InactivityLogout />
 
-      <div className="flex min-h-screen flex-col bg-gradient-to-b from-background/80 to-background md:flex-row">
+      <div className="flex min-h-screen flex-col bg-gradient-to-b from-background/80 to-background md:flex-row w-full min-w-0">
         <DashboardNav />
-        <SidebarInset className="flex-1 flex flex-col">
-          <header className="md:hidden sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+        <SidebarInset className="flex-1 flex flex-col min-w-0 w-full">
+          <header className="md:hidden sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6 w-full">
             <a href="/dashboard" className="flex items-center gap-2 font-semibold">
               <span className="text-lg font-bold">DreamVault</span>
             </a>
           </header>
-          <main className="flex-1 w-full">
-            <div className="w-full mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8 pb-16 md:pb-10">{children}</div>
+          <main className="flex-1 w-full min-w-0">
+            <div className="w-full px-4 sm:px-6 md:px-8 py-6 md:py-8 pb-16 md:pb-10">{children}</div>
           </main>
-          <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t p-2 z-10">
+          <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-md border-t p-2 z-10 w-full">
             <div className="flex justify-around items-center">
               <MobileNavButtons />
             </div>
