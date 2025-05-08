@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Mic, Loader2, Brain, Sparkles, Info, Square } from "lucide-react"
+import { Mic, Loader2, Brain, Sparkles, Info, Square, AlertTriangle } from "lucide-react"
 import { DreamInterpretation } from "@/components/dream-interpretation"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
@@ -40,8 +40,9 @@ export default function InterpretDreamPage() {
   const [autoGenerateTitle, setAutoGenerateTitle] = useState(true)
   const [recordingTime, setRecordingTime] = useState(0)
   const [transcribing, setTranscribing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize speech recognition
@@ -53,7 +54,7 @@ export default function InterpretDreamPage() {
       recognitionRef.current.interimResults = true
       recognitionRef.current.lang = "en-US"
 
-      recognitionRef.current.onresult = (event) => {
+      recognitionRef.current.onresult = (event: any) => {
         let interimTranscript = ""
         let finalTranscript = dreamText
 
@@ -69,7 +70,7 @@ export default function InterpretDreamPage() {
         setDreamText(finalTranscript.trim())
       }
 
-      recognitionRef.current.onerror = (event) => {
+      recognitionRef.current.onerror = (event: any) => {
         console.error("Speech recognition error", event.error)
         stopRecording()
         toast({
@@ -216,6 +217,7 @@ export default function InterpretDreamPage() {
 
     setIsLoading(true)
     setStep("processing")
+    setError(null)
 
     try {
       // Call the API to interpret the dream
@@ -227,19 +229,40 @@ export default function InterpretDreamPage() {
         body: JSON.stringify({ dreamText }),
       })
 
+      // Check if the response is ok before trying to parse JSON
       if (!response.ok) {
-        throw new Error("Failed to interpret dream")
+        const errorText = await response.text()
+        console.error("API error response:", errorText)
+        throw new Error(`Server error: ${response.status} ${response.statusText}`)
       }
 
-      const data = await response.json()
+      // Now try to parse the JSON
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError)
+        throw new Error("Invalid response format from server")
+      }
+
+      // Check if the response contains an error
+      if (data.error) {
+        console.warn("API returned error:", data.error)
+        // We'll still continue if we have the fallback fields
+        if (!data.summary) {
+          throw new Error(data.error)
+        }
+      }
+
       setInterpretation(data)
       setIsLoading(false)
       setStep("result")
     } catch (error) {
       console.error("Error interpreting dream:", error)
+      setError(error instanceof Error ? error.message : "Failed to interpret dream")
       toast({
         title: "Error",
-        description: "Failed to interpret your dream. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to interpret your dream. Please try again.",
         variant: "destructive",
       })
       setIsLoading(false)
@@ -290,7 +313,7 @@ export default function InterpretDreamPage() {
 
   if (step === "processing") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 w-full">
         <div className="relative">
           <div className="absolute inset-0 rounded-full border-t-2 border-purple-500 animate-spin"></div>
           <div className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 opacity-20 blur-xl animate-pulse"></div>
@@ -313,14 +336,14 @@ export default function InterpretDreamPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full min-w-0 flex-1">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Interpret Your Dream</h1>
         <p className="text-muted-foreground mt-2">Share your dream and receive AI-powered insights</p>
       </div>
 
       {step === "input" ? (
-        <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden">
+        <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden w-full">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -411,6 +434,19 @@ export default function InterpretDreamPage() {
                     <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
                     <span className="font-medium">Processing speech...</span>
                   </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <span className="font-medium">Error: {error}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    There was an error interpreting your dream. Please try again or contact support if the issue
+                    persists.
+                  </p>
                 </div>
               )}
 

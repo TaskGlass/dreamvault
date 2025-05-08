@@ -6,7 +6,9 @@ export function HeroSection() {
     <section className="py-20 flex flex-col items-center text-center">
       <div className="space-y-4 max-w-3xl">
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-indigo-400">
-          Unlock the Secrets of Your Dreams
+          Unlock the Secrets of
+          <br />
+          Your Dreams
         </h1>
         <p className="text-xl text-muted-foreground max-w-xl mx-auto">
           DreamVault uses AI to interpret your dreams, revealing hidden meanings and emotional insights.

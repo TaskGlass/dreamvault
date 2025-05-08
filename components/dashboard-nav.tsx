@@ -18,31 +18,14 @@ import {
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/use-auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useEffect, useState } from "react"
-import { getUserProfile } from "@/lib/dream-service"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { useProfile } from "@/hooks/use-profile"
 
 export function DashboardNav({ className, onNavItemClick }: { className?: string; onNavItemClick?: () => void }) {
   const pathname = usePathname()
   const { signOut, user } = useAuth()
-  const [profile, setProfile] = useState<any>(null)
-
-  useEffect(() => {
-    async function fetchProfile() {
-      if (!user) return
-      try {
-        const userProfile = await getUserProfile(user.id)
-        if (userProfile) {
-          setProfile(userProfile)
-        }
-      } catch (error) {
-        console.error("Error fetching user profile:", error)
-      }
-    }
-
-    fetchProfile()
-  }, [user])
+  const { profile } = useProfile()
 
   const navItems = [
     {

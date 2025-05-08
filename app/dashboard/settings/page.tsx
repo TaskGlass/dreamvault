@@ -17,6 +17,8 @@ import { getUserProfile } from "@/lib/dream-service"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useProfile } from "@/hooks/use-profile"
+import { uploadAvatar } from "@/lib/avatar-service"
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
@@ -27,6 +29,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const { profile: contextProfile, refreshProfile } = useProfile()
 
   // Form state
   const [fullName, setFullName] = useState("")
@@ -88,6 +91,9 @@ export default function SettingsPage() {
 
       // Update local state
       setProfile({ ...profile, full_name: fullName })
+      if (refreshProfile) {
+        await refreshProfile()
+      }
 
       toast({
         title: "Profile updated",
@@ -102,6 +108,34 @@ export default function SettingsPage() {
       })
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Function to ensure the avatars bucket exists
+  const ensureAvatarsBucketExists = async () => {
+    try {
+      // Check if the bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets()
+      const avatarsBucketExists = buckets?.some((bucket) => bucket.name === "avatars")
+
+      // If the bucket doesn't exist, create it
+      if (!avatarsBucketExists) {
+        const { error } = await supabase.storage.createBucket("avatars", {
+          public: true,
+          fileSizeLimit: 5 * 1024 * 1024, // 5MB
+        })
+
+        if (error) {
+          console.error("Error creating avatars bucket:", error)
+          return false
+        }
+        console.log("Created avatars bucket successfully")
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error checking/creating avatars bucket:", error)
+      return false
     }
   }
 
@@ -131,47 +165,34 @@ export default function SettingsPage() {
 
     setUploadingAvatar(true)
     try {
-      // Upload to Supabase Storage
-      const fileName = `avatar-${user.id}-${Date.now()}`
-      const { data, error } = await supabase.storage.from("avatars").upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: true,
-      })
+      // Use the avatar service to upload the image
+      const { url, error } = await uploadAvatar(file, user.id)
 
       if (error) throw error
-
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage.from("avatars").getPublicUrl(data.path)
-
-      const avatarUrl = publicUrlData.publicUrl
-
-      // Update profile in database
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: avatarUrl })
-        .eq("user_id", user.id)
-
-      if (updateError) throw updateError
+      if (!url) throw new Error("Failed to get avatar URL")
 
       // Update user metadata
       const { error: userUpdateError } = await supabase.auth.updateUser({
-        data: { avatar_url: avatarUrl },
+        data: { avatar_url: url },
       })
 
       if (userUpdateError) throw userUpdateError
 
       // Update local state
-      setProfile({ ...profile, avatar_url: avatarUrl })
+      setProfile({ ...profile, avatar_url: url })
+      if (refreshProfile) {
+        await refreshProfile()
+      }
 
       toast({
         title: "Avatar updated",
         description: "Your profile picture has been updated.",
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error uploading avatar:", error)
       toast({
         title: "Error",
-        description: "Failed to upload your profile picture.",
+        description: error.message || "Failed to upload your profile picture.",
         variant: "destructive",
       })
     } finally {
@@ -275,6 +296,9 @@ export default function SettingsPage() {
                                 if (error) throw error
 
                                 setProfile({ ...profile, avatar_url: null })
+                                if (refreshProfile) {
+                                  await refreshProfile()
+                                }
 
                                 toast({
                                   title: "Avatar removed",

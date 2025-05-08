@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -8,28 +8,12 @@ import { Menu, Bell } from "lucide-react"
 import { DashboardNav } from "./dashboard-nav"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/hooks/use-auth"
-import { getUserProfile } from "@/lib/dream-service"
+import { useProfile } from "@/hooks/use-profile"
 
 export function MobileHeader() {
   const [open, setOpen] = useState(false)
   const { user } = useAuth()
-  const [profile, setProfile] = useState<any>(null)
-
-  useEffect(() => {
-    async function fetchProfile() {
-      if (!user) return
-      try {
-        const userProfile = await getUserProfile(user.id)
-        if (userProfile) {
-          setProfile(userProfile)
-        }
-      } catch (error) {
-        console.error("Error fetching user profile:", error)
-      }
-    }
-
-    fetchProfile()
-  }, [user])
+  const { profile } = useProfile()
 
   // Get user initials for avatar fallback
   const getInitials = () => {

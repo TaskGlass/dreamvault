@@ -61,19 +61,34 @@ export async function POST(request: Request) {
     try {
       // Parse the response as JSON
       const interpretation = JSON.parse(jsonText)
-      return Response.json(interpretation)
+      return NextResponse.json(interpretation)
     } catch (parseError) {
       console.error("Error parsing JSON:", parseError, "Raw text:", jsonText)
-      return Response.json(
-        {
-          error: "Failed to parse interpretation",
-          rawResponse: jsonText,
-        },
-        { status: 500 },
-      )
+
+      // Return a fallback interpretation with the raw text
+      return NextResponse.json({
+        error: "Failed to parse interpretation",
+        summary: "We encountered an issue processing your dream. Here's the raw interpretation:",
+        rawResponse: jsonText,
+        emotions: ["unknown"],
+        symbols: [{ name: "error", meaning: "There was an error processing your dream symbols" }],
+        insights: "We couldn't generate proper insights due to a technical issue.",
+        recommendations: "Please try again with a different or more detailed dream description.",
+        affirmation: "I am patient with technology and understand that sometimes things don't work perfectly.",
+      })
     }
   } catch (error) {
     console.error("Error interpreting dream:", error)
-    return Response.json({ error: "Failed to interpret dream" }, { status: 500 })
+
+    // Always return a valid JSON response
+    return NextResponse.json({
+      error: "Failed to interpret dream",
+      summary: "We encountered a technical issue while interpreting your dream.",
+      emotions: ["unknown"],
+      symbols: [{ name: "error", meaning: "There was an error processing your dream" }],
+      insights: "We couldn't generate insights due to a technical issue.",
+      recommendations: "Please try again later or contact support if the issue persists.",
+      affirmation: "I am patient and understanding when technology doesn't work as expected.",
+    })
   }
 }

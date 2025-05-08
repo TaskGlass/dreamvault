@@ -29,6 +29,26 @@ async function checkProfilesTable(): Promise<boolean> {
   }
 }
 
+// Check if the artwork_url column exists in the dreams table
+async function checkArtworkUrlColumn(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("check_column_exists", {
+      p_table: "dreams",
+      p_column: "artwork_url",
+    })
+
+    if (error) {
+      console.error("Error checking artwork_url column:", error)
+      return false
+    }
+
+    return data || false
+  } catch (error) {
+    console.error("Error checking artwork_url column:", error)
+    return false
+  }
+}
+
 export async function getDreamsByUserId(userId: string): Promise<Dream[]> {
   try {
     // Check if the table exists
@@ -134,6 +154,9 @@ export async function createDream(
       }
     }
 
+    // Check if artwork_url column exists
+    const artworkUrlExists = await checkArtworkUrlColumn()
+
     // Start a transaction
     const { data: dream, error: dreamError } = await supabase
       .from("dreams")
@@ -146,6 +169,7 @@ export async function createDream(
         created_at: new Date().toISOString(),
         has_artwork: interpretation ? true : false,
         has_affirmation: interpretation ? true : false,
+        ...(artworkUrlExists ? {} : {}), // Only include artwork_url if the column exists
       })
       .select()
       .single()
@@ -200,8 +224,8 @@ export async function createDream(
       console.error("Error updating profile:", profileError)
     }
 
-    // Generate artwork if interpretation exists
-    if (interpretation) {
+    // Generate artwork if interpretation exists and the column exists
+    if (interpretation && artworkUrlExists) {
       try {
         const artworkUrl = await generateDreamArtwork(dream.id, content, interpretation)
         if (artworkUrl) {
