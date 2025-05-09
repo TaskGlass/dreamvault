@@ -11,11 +11,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Create Supabase client
+// Create Supabase client with improved configuration
 export const supabase = createClient<Database>(supabaseUrl!, supabaseAnonKey!, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: false, // Disable automatic detection to avoid conflicts
+    flowType: "pkce", // Use PKCE flow for better security
   },
 })
 
@@ -34,5 +36,33 @@ export async function checkSupabaseConnection() {
   } catch (err) {
     console.error("Error checking Supabase connection:", err)
     return false
+  }
+}
+
+// Helper function to safely sign out
+export async function safeSignOut() {
+  try {
+    // First clear any stored session data
+    if (typeof window !== "undefined") {
+      const storageKeys = Object.keys(localStorage).filter(
+        (key) => key.startsWith("sb-") || key.includes("supabase") || key.includes("auth"),
+      )
+
+      for (const key of storageKeys) {
+        try {
+          localStorage.removeItem(key)
+        } catch (e) {
+          console.warn(`Failed to remove item ${key} from localStorage`, e)
+        }
+      }
+    }
+
+    // Then sign out through the API
+    await supabase.auth.signOut({ scope: "local" })
+
+    return { success: true }
+  } catch (error) {
+    console.error("Safe sign out error:", error)
+    return { success: false, error }
   }
 }
