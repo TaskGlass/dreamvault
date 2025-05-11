@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Brain, BookOpen, BarChart3, Settings, LogOut, Plus, Home, Sparkles, RefreshCw } from "lucide-react"
+import { Brain, BookOpen, BarChart3, Settings, LogOut, Plus, Home, Sparkles } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -52,11 +52,6 @@ export function DashboardNav({ className, onNavItemClick }: { className?: string
       title: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
-    },
-    {
-      href: "/dashboard/reconnect",
-      title: "Reconnect",
-      icon: RefreshCw,
     },
   ]
 

@@ -1,6 +1,5 @@
 import { supabase } from "./supabase"
 import type { Database } from "./database.types"
-import { verifyEnvironmentVariables } from "./supabase"
 
 export type Dream = Database["public"]["Tables"]["dreams"]["Row"] & {
   tags?: string[]
@@ -9,13 +8,6 @@ export type Dream = Database["public"]["Tables"]["dreams"]["Row"] & {
 // Check if the dreams table exists
 async function checkDreamsTable(): Promise<boolean> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      console.error(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
-      return false
-    }
-
     const { error } = await supabase.from("dreams").select("count", { count: "exact", head: true }).limit(1)
 
     return !error
@@ -28,13 +20,6 @@ async function checkDreamsTable(): Promise<boolean> {
 // Add this function at the top with the other check function
 async function checkProfilesTable(): Promise<boolean> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      console.error(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
-      return false
-    }
-
     const { error } = await supabase.from("profiles").select("count", { count: "exact", head: true }).limit(1)
 
     return !error
@@ -47,35 +32,17 @@ async function checkProfilesTable(): Promise<boolean> {
 // Check if the artwork_url column exists in the dreams table
 async function checkArtworkUrlColumn(): Promise<boolean> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      console.error(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
+    const { data, error } = await supabase.rpc("check_column_exists", {
+      p_table: "dreams",
+      p_column: "artwork_url",
+    })
+
+    if (error) {
+      console.error("Error checking artwork_url column:", error)
       return false
     }
 
-    try {
-      const { data, error } = await supabase.rpc("check_column_exists", {
-        p_table: "dreams",
-        p_column: "artwork_url",
-      })
-
-      if (error) {
-        console.error("Error checking artwork_url column:", error)
-        return false
-      }
-
-      return data || false
-    } catch (rpcError) {
-      // If RPC fails, try a direct query
-      const { data, error } = await supabase.from("dreams").select("artwork_url").limit(1)
-
-      if (error && error.message.toLowerCase().includes("column")) {
-        return false
-      }
-
-      return true
-    }
+    return data || false
   } catch (error) {
     console.error("Error checking artwork_url column:", error)
     return false
@@ -84,13 +51,6 @@ async function checkArtworkUrlColumn(): Promise<boolean> {
 
 export async function getDreamsByUserId(userId: string): Promise<Dream[]> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      console.error(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
-      return []
-    }
-
     // Check if the table exists
     const tableExists = await checkDreamsTable()
     if (!tableExists) {
@@ -143,13 +103,6 @@ export async function getDreamsByUserId(userId: string): Promise<Dream[]> {
 
 export async function getDreamById(dreamId: string): Promise<Dream | null> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      console.error(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
-      return null
-    }
-
     // Check if the table exists
     const tableExists = await checkDreamsTable()
     if (!tableExists) {
@@ -192,15 +145,6 @@ export async function createDream(
   tags: string[] = [],
 ): Promise<{ dream: Dream | null; error: any }> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      return {
-        dream: null,
-        error: new Error(`Missing required environment variables: ${envCheck.missing.join(", ")}`),
-      }
-    }
-
     // Check if the table exists
     const tableExists = await checkDreamsTable()
     if (!tableExists) {
@@ -312,15 +256,6 @@ export async function createDream(
 
 export async function deleteDream(dreamId: string): Promise<{ success: boolean; error: any }> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      return {
-        success: false,
-        error: new Error(`Missing required environment variables: ${envCheck.missing.join(", ")}`),
-      }
-    }
-
     // Check if the table exists
     const tableExists = await checkDreamsTable()
     if (!tableExists) {
@@ -356,13 +291,6 @@ export async function deleteDream(dreamId: string): Promise<{ success: boolean; 
 // Update the getUserProfile function
 export async function getUserProfile(userId: string) {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      console.error(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
-      return null
-    }
-
     // Check if the table exists
     const tableExists = await checkProfilesTable()
     if (!tableExists) {
@@ -403,15 +331,6 @@ export async function updateUserProfile(
   updates: Partial<Database["public"]["Tables"]["profiles"]["Update"]>,
 ): Promise<{ success: boolean; error: any }> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      return {
-        success: false,
-        error: new Error(`Missing required environment variables: ${envCheck.missing.join(", ")}`),
-      }
-    }
-
     // Check if the table exists
     const tableExists = await checkProfilesTable()
     if (!tableExists) {
@@ -511,15 +430,6 @@ export async function shareDreamContent(
 // New function to get shared content by ID
 export async function getSharedContent(shareId: string): Promise<{ data: any; error: any }> {
   try {
-    // First verify environment variables
-    const envCheck = verifyEnvironmentVariables()
-    if (!envCheck.valid) {
-      return {
-        data: null,
-        error: new Error(`Missing required environment variables: ${envCheck.missing.join(", ")}`),
-      }
-    }
-
     const { data, error } = await supabase.from("dream_shares").select("*").eq("id", shareId).single()
 
     if (error) {
