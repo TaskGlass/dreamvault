@@ -5,122 +5,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { DreamCard } from "@/components/dream-card"
 import { InsightCard } from "@/components/insight-card"
-import { Plus, Brain, Sparkles, BookOpen, Calendar, Moon, Zap, Database, RefreshCw } from "lucide-react"
+import { Plus, Brain, Sparkles, BookOpen, Calendar, Moon, Zap, AlertCircle, Settings } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
-import { getDreamsByUserId, getUserProfile } from "@/lib/dream-service"
+import { getDreamsByUserId } from "@/lib/dream-service"
 import type { Dream } from "@/lib/dream-service"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { checkDatabaseTables, initializeDatabase, createUserProfile } from "@/lib/db-init"
+import { useProfile } from "@/hooks/use-profile"
 import { cn } from "@/lib/utils"
+import { verifyEnvironmentVariables } from "@/lib/supabase"
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { profile, loading: profileLoading, error: profileError } = useProfile()
   const { toast } = useToast()
   const [dreams, setDreams] = useState<Dream[]>([])
-  const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [dbError, setDbError] = useState<string | null>(null)
-  const [initializingDb, setInitializingDb] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"recent" | "insights">("recent")
+  const [envError, setEnvError] = useState<string[] | null>(null)
+
+  // Check environment variables
+  useEffect(() => {
+    const envCheck = verifyEnvironmentVariables()
+    if (!envCheck.valid) {
+      setEnvError(envCheck.missing)
+    }
+  }, [])
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchDreams() {
       if (!user) return
 
       try {
         setLoading(true)
-        setDbError(null)
+        setError(null)
 
-        // First check if the database tables exist
-        const { allTablesExist } = await checkDatabaseTables()
-
-        if (!allTablesExist) {
-          setDbError("Database tables not found. Please initialize the database.")
+        // Check if environment variables are valid before proceeding
+        const envCheck = verifyEnvironmentVariables()
+        if (!envCheck.valid) {
+          setError(`Missing required environment variables: ${envCheck.missing.join(", ")}`)
           setLoading(false)
           return
         }
 
-        // Fetch user profile and dreams
-        let userProfile = await getUserProfile(user.id)
-
-        // If profile doesn't exist, create one
-        if (!userProfile) {
-          console.log("Creating new profile for user:", user.id)
-          const fullName = user.user_metadata?.full_name || ""
-          const { success } = await createUserProfile(user.id, fullName)
-
-          if (success) {
-            userProfile = await getUserProfile(user.id)
-          } else {
-            console.error("Failed to create user profile")
-          }
-        }
-
+        // Fetch dreams
         const userDreams = await getDreamsByUserId(user.id)
-
         setDreams(userDreams)
-        setProfile(userProfile)
       } catch (error: any) {
-        console.error("Error fetching dashboard data:", error)
-
-        // Check if the error is related to missing tables
-        if (error.message?.includes("relation") && error.message?.includes("does not exist")) {
-          setDbError("Database tables not found. Please initialize the database.")
-        } else {
-          setDbError("An error occurred while loading your data. Please try again later.")
-        }
+        console.error("Error fetching dreams:", error)
+        setError(error.message || "Failed to load dreams")
       } finally {
         setLoading(false)
       }
     }
 
-    fetchData()
+    fetchDreams()
   }, [user])
-
-  const handleInitializeDatabase = async () => {
-    if (!user) return
-
-    setInitializingDb(true)
-    try {
-      const result = await initializeDatabase()
-
-      if (result.success) {
-        toast({
-          title: "Database initialized",
-          description: "The database has been set up successfully. Refreshing your data...",
-        })
-
-        // Create a profile for the user
-        await createUserProfile(user.id, user.user_metadata?.full_name || "")
-
-        // Refresh the data
-        const [userDreams, userProfile] = await Promise.all([getDreamsByUserId(user.id), getUserProfile(user.id)])
-
-        setDreams(userDreams)
-        setProfile(userProfile)
-        setDbError(null)
-      } else {
-        toast({
-          title: "Initialization failed",
-          description: result.message || "Failed to initialize the database. Please try again.",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error initializing database:", error)
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setInitializingDb(false)
-    }
-  }
 
   // Calculate stats
   const dreamsThisWeek = dreams.filter((dream) => {
@@ -168,7 +112,7 @@ export default function DashboardPage() {
   // Get recent dreams (last 3)
   const recentDreams = dreams.slice(0, 3)
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[60vh] w-full min-w-0 flex-1">
         <div className="relative w-16 h-16">
@@ -182,37 +126,47 @@ export default function DashboardPage() {
     )
   }
 
-  if (dbError) {
+  // Show environment variable error
+  if (envError) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[60vh] w-full min-w-0 flex-1">
-        <Database className="h-12 w-12 text-purple-500 mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Database Setup Required</h2>
-        <p className="text-muted-foreground mb-6">
-          It looks like the database tables for DreamVault haven't been created yet.
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Configuration Error</h2>
+        <p className="text-muted-foreground mb-6 text-center max-w-md">
+          The application is missing required environment variables:
         </p>
-        <Alert variant="warning" className="mb-6 bg-amber-500/10 border-amber-500/50">
-          <AlertTitle>First-time setup</AlertTitle>
+        <Alert variant="destructive" className="mb-6 max-w-md">
+          <AlertTitle>Missing Environment Variables</AlertTitle>
           <AlertDescription>
-            This is a one-time setup process that will create the necessary database tables for DreamVault to work
-            properly.
+            <ul className="list-disc pl-4 mt-2">
+              {envError.map((variable) => (
+                <li key={variable}>{variable}</li>
+              ))}
+            </ul>
           </AlertDescription>
         </Alert>
-        <Button
-          onClick={handleInitializeDatabase}
-          disabled={initializingDb}
-          className="gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600"
-        >
-          {initializingDb ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Initializing Database...
-            </>
-          ) : (
-            <>
-              <Database className="h-4 w-4" />
-              Initialize Database
-            </>
-          )}
+        <p className="text-sm text-muted-foreground mb-6 text-center max-w-md">
+          Please make sure these environment variables are properly configured in your Supabase project.
+        </p>
+        <Button asChild>
+          <Link href="/dashboard/settings">
+            <Settings className="mr-2 h-4 w-4" />
+            Go to Settings
+          </Link>
+        </Button>
+      </div>
+    )
+  }
+
+  // Show general error
+  if (error || profileError) {
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[60vh] w-full min-w-0 flex-1">
+        <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
+        <p className="text-muted-foreground mb-6 text-center max-w-md">{error || profileError}</p>
+        <Button onClick={() => window.location.reload()} className="gap-2">
+          Refresh Page
         </Button>
       </div>
     )
@@ -494,10 +448,13 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="mt-2">
-                  <Progress value={(dreams.length / profile.dreams_limit) * 100} className="h-2.5 bg-purple-100/10" />
+                  <Progress
+                    value={(dreams.length / (profile.dreams_limit || 10)) * 100}
+                    className="h-2.5 bg-purple-100/10"
+                  />
                 </div>
                 <p className="text-xs md:text-sm text-muted-foreground mt-2">
-                  {dreams.length} / {profile.dreams_limit} dreams used this month
+                  {dreams.length} / {profile.dreams_limit || 10} dreams used this month
                 </p>
               </div>
               {profile.subscription_tier === "free" && (

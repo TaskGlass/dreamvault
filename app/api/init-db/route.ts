@@ -1,156 +1,191 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createAdminClient } from "@/lib/supabase"
+import { verifyEnvironmentVariables } from "@/lib/supabase"
+
+// SQL statements for creating tables
+const createTablesSQL = `
+-- Create profiles table if it doesn't exist
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT,
+  avatar_url TEXT,
+  subscription_tier TEXT DEFAULT 'free',
+  dreams_limit INTEGER DEFAULT 10,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create dreams table if it doesn't exist
+CREATE TABLE IF NOT EXISTS dreams (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  interpretation TEXT,
+  mood TEXT,
+  tags TEXT[],
+  is_lucid BOOLEAN DEFAULT FALSE,
+  is_nightmare BOOLEAN DEFAULT FALSE,
+  is_recurring BOOLEAN DEFAULT FALSE,
+  artwork_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create dream_shares table if it doesn't exist
+CREATE TABLE IF NOT EXISTS dream_shares (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dream_id UUID REFERENCES dreams(id) ON DELETE CASCADE,
+  share_code TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  expires_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Create RLS policies if they don't exist
+DO $$
+BEGIN
+  -- Profiles policies
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'profiles_select_policy'
+  ) THEN
+    CREATE POLICY profiles_select_policy ON profiles
+      FOR SELECT USING (auth.uid() = id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'profiles_insert_policy'
+  ) THEN
+    CREATE POLICY profiles_insert_policy ON profiles
+      FOR INSERT WITH CHECK (auth.uid() = id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'profiles_update_policy'
+  ) THEN
+    CREATE POLICY profiles_update_policy ON profiles
+      FOR UPDATE USING (auth.uid() = id);
+  END IF;
+
+  -- Dreams policies
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dreams' AND policyname = 'dreams_select_policy'
+  ) THEN
+    CREATE POLICY dreams_select_policy ON dreams
+      FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dreams' AND policyname = 'dreams_insert_policy'
+  ) THEN
+    CREATE POLICY dreams_insert_policy ON dreams
+      FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dreams' AND policyname = 'dreams_update_policy'
+  ) THEN
+    CREATE POLICY dreams_update_policy ON dreams
+      FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dreams' AND policyname = 'dreams_delete_policy'
+  ) THEN
+    CREATE POLICY dreams_delete_policy ON dreams
+      FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+
+  -- Dream shares policies
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dream_shares' AND policyname = 'dream_shares_select_policy'
+  ) THEN
+    CREATE POLICY dream_shares_select_policy ON dream_shares
+      FOR SELECT USING (
+        EXISTS (
+          SELECT 1 FROM dreams WHERE dreams.id = dream_shares.dream_id AND dreams.user_id = auth.uid()
+        )
+      );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dream_shares' AND policyname = 'dream_shares_insert_policy'
+  ) THEN
+    CREATE POLICY dream_shares_insert_policy ON dream_shares
+      FOR INSERT WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM dreams WHERE dreams.id = dream_shares.dream_id AND dreams.user_id = auth.uid()
+        )
+      );
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT FROM pg_policies WHERE tablename = 'dream_shares' AND policyname = 'dream_shares_delete_policy'
+  ) THEN
+    CREATE POLICY dream_shares_delete_policy ON dream_shares
+      FOR DELETE USING (
+        EXISTS (
+          SELECT 1 FROM dreams WHERE dreams.id = dream_shares.dream_id AND dreams.user_id = auth.uid()
+        )
+      );
+  END IF;
+
+  -- Enable RLS on tables
+  ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE dreams ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE dream_shares ENABLE ROW LEVEL SECURITY;
+END
+$$;
+`
 
 export async function POST() {
   try {
-    // Direct SQL to create tables without using stored procedures
-    const createTablesSQL = `
-      -- Create profiles table if it doesn't exist
-      CREATE TABLE IF NOT EXISTS public.profiles (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID NOT NULL,
-        full_name TEXT,
-        subscription_tier TEXT NOT NULL DEFAULT 'free',
-        dreams_count INTEGER NOT NULL DEFAULT 0,
-        dreams_limit INTEGER NOT NULL DEFAULT 5,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-        avatar_url TEXT,
-        UNIQUE(user_id)
-      );
-
-      -- Create dreams table if it doesn't exist
-      CREATE TABLE IF NOT EXISTS public.dreams (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        user_id UUID NOT NULL,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL,
-        mood TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
-        interpretation JSONB,
-        has_artwork BOOLEAN DEFAULT FALSE,
-        has_affirmation BOOLEAN DEFAULT FALSE
-      );
-
-      -- Create dream_tags table if it doesn't exist
-      CREATE TABLE IF NOT EXISTS public.dream_tags (
-        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        dream_id UUID NOT NULL,
-        tag TEXT NOT NULL
-      );
-
-      -- Create indexes if they don't exist
-      CREATE INDEX IF NOT EXISTS dreams_user_id_idx ON public.dreams(user_id);
-      CREATE INDEX IF NOT EXISTS dreams_created_at_idx ON public.dreams(created_at);
-      CREATE INDEX IF NOT EXISTS dream_tags_dream_id_idx ON public.dream_tags(dream_id);
-      CREATE INDEX IF NOT EXISTS dream_tags_tag_idx ON public.dream_tags(tag);
-
-      -- Enable RLS
-      ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE public.dreams ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE public.dream_tags ENABLE ROW LEVEL SECURITY;
-
-      -- Create increment function if it doesn't exist
-      CREATE OR REPLACE FUNCTION increment(x integer)
-      RETURNS integer AS $$
-      BEGIN
-        RETURN x + 1;
-      END;
-      $$ LANGUAGE plpgsql;
-    `
-
-    // Execute the SQL to create tables
-    const { error: createTablesError } = await supabase.sql(createTablesSQL)
-
-    if (createTablesError) {
-      console.error("Error creating tables:", createTablesError)
+    // First verify environment variables
+    const envCheck = verifyEnvironmentVariables()
+    if (!envCheck.valid) {
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to create database tables",
-          error: createTablesError,
+          message: `Missing required environment variables: ${envCheck.missing.join(", ")}`,
         },
         { status: 500 },
       )
     }
 
-    // Create RLS policies
-    const createPoliciesSQL = `
-      -- Profiles policies
-      CREATE POLICY IF NOT EXISTS "Users can view their own profile"
-        ON public.profiles FOR SELECT
-        USING (auth.uid() = user_id);
-
-      CREATE POLICY IF NOT EXISTS "Users can update their own profile"
-        ON public.profiles FOR UPDATE
-        USING (auth.uid() = user_id);
-
-      CREATE POLICY IF NOT EXISTS "Users can insert their own profile"
-        ON public.profiles FOR INSERT
-        WITH CHECK (auth.uid() = user_id);
-
-      -- Dreams policies
-      CREATE POLICY IF NOT EXISTS "Users can view their own dreams"
-        ON public.dreams FOR SELECT
-        USING (auth.uid() = user_id);
-
-      CREATE POLICY IF NOT EXISTS "Users can insert their own dreams"
-        ON public.dreams FOR INSERT
-        WITH CHECK (auth.uid() = user_id);
-
-      CREATE POLICY IF NOT EXISTS "Users can update their own dreams"
-        ON public.dreams FOR UPDATE
-        USING (auth.uid() = user_id);
-
-      CREATE POLICY IF NOT EXISTS "Users can delete their own dreams"
-        ON public.dreams FOR DELETE
-        USING (auth.uid() = user_id);
-
-      -- Dream tags policies
-      CREATE POLICY IF NOT EXISTS "Users can view tags for their own dreams"
-        ON public.dream_tags FOR SELECT
-        USING (
-          dream_id IN (
-            SELECT id FROM public.dreams WHERE user_id = auth.uid()
-          )
-        );
-
-      CREATE POLICY IF NOT EXISTS "Users can insert tags for their own dreams"
-        ON public.dream_tags FOR INSERT
-        WITH CHECK (
-          dream_id IN (
-            SELECT id FROM public.dreams WHERE user_id = auth.uid()
-          )
-        );
-
-      CREATE POLICY IF NOT EXISTS "Users can delete tags for their own dreams"
-        ON public.dream_tags FOR DELETE
-        USING (
-          dream_id IN (
-            SELECT id FROM public.dreams WHERE user_id = auth.uid()
-          )
-        );
-    `
-
-    // Execute the SQL to create policies
-    const { error: createPoliciesError } = await supabase.sql(createPoliciesSQL)
-
-    if (createPoliciesError) {
-      console.error("Error creating policies:", createPoliciesError)
-      // Don't return an error here, as the tables were created successfully
-      // Just log the error and continue
+    // Try to create an admin client
+    let adminClient
+    try {
+      adminClient = createAdminClient()
+    } catch (error: any) {
+      console.error("Failed to create admin client:", error)
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Server configuration error: ${error.message}`,
+        },
+        { status: 500 },
+      )
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Database schema initialized successfully",
-    })
+    // Execute SQL to create tables and policies
+    const { error } = await adminClient.rpc("exec_sql", { sql: createTablesSQL })
+
+    if (error) {
+      console.error("Error initializing database:", error)
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Failed to initialize database: ${error.message}`,
+        },
+        { status: 500 },
+      )
+    }
+
+    return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("Error in init-db route:", error)
+    console.error("Unexpected error initializing database:", error)
     return NextResponse.json(
       {
         success: false,
-        message: "An unexpected error occurred",
-        error: error.message,
+        message: `An unexpected error occurred: ${error.message}`,
       },
       { status: 500 },
     )
