@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,14 +9,13 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CreditCard, Bell, User, Shield, Sparkles, Upload, Loader2, Check } from "lucide-react"
+import { CreditCard, Bell, User, Shield, Sparkles, Loader2, Check } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { getUserProfile } from "@/lib/dream-service"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useProfile } from "@/hooks/use-profile"
-import { uploadAvatar } from "@/lib/avatar-service"
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
@@ -28,7 +25,6 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const { profile: contextProfile, refreshProfile } = useProfile()
 
   // Form state
@@ -111,95 +107,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Function to ensure the avatars bucket exists
-  const ensureAvatarsBucketExists = async () => {
-    try {
-      // Check if the bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets()
-      const avatarsBucketExists = buckets?.some((bucket) => bucket.name === "avatars")
-
-      // If the bucket doesn't exist, create it
-      if (!avatarsBucketExists) {
-        const { error } = await supabase.storage.createBucket("avatars", {
-          public: true,
-          fileSizeLimit: 5 * 1024 * 1024, // 5MB
-        })
-
-        if (error) {
-          console.error("Error creating avatars bucket:", error)
-          return false
-        }
-        console.log("Created avatars bucket successfully")
-      }
-
-      return true
-    } catch (error) {
-      console.error("Error checking/creating avatars bucket:", error)
-      return false
-    }
-  }
-
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || !user) return
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload an image file (JPEG, PNG, etc.).",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Please upload an image smaller than 5MB.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setUploadingAvatar(true)
-    try {
-      // Use the avatar service to upload the image
-      const { url, error } = await uploadAvatar(file, user.id)
-
-      if (error) throw error
-      if (!url) throw new Error("Failed to get avatar URL")
-
-      // Update user metadata
-      const { error: userUpdateError } = await supabase.auth.updateUser({
-        data: { avatar_url: url },
-      })
-
-      if (userUpdateError) throw userUpdateError
-
-      // Update local state
-      setProfile({ ...profile, avatar_url: url })
-      if (refreshProfile) {
-        await refreshProfile()
-      }
-
-      toast({
-        title: "Avatar updated",
-        description: "Your profile picture has been updated.",
-      })
-    } catch (error: any) {
-      console.error("Error uploading avatar:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to upload your profile picture.",
-        variant: "destructive",
-      })
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -231,107 +138,23 @@ export default function SettingsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5 text-purple-500" />
-                    Profile Picture
-                  </CardTitle>
-                  <CardDescription>Update your profile photo</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex flex-col sm:flex-row items-center gap-6">
-                    <Avatar className="h-24 w-24 border-2 border-purple-300/20">
-                      <AvatarImage
-                        src={profile?.avatar_url || user?.user_metadata?.avatar_url || ""}
-                        alt={profile?.full_name || user?.user_metadata?.full_name || "User"}
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white text-2xl">
-                        {getInitials()}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    <div className="flex-1 space-y-4">
-                      <div className="text-sm text-muted-foreground">
-                        Upload a new profile picture. JPG, PNG or GIF, max 5MB.
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <Label
-                          htmlFor="avatar-upload"
-                          className={`cursor-pointer px-4 py-2 rounded-md border ${
-                            uploadingAvatar ? "bg-muted cursor-not-allowed" : "hover:bg-accent"
-                          } transition-colors`}
-                        >
-                          {uploadingAvatar ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 inline animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2 inline" />
-                              Upload Image
-                            </>
-                          )}
-                        </Label>
-                        <Input
-                          id="avatar-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleAvatarUpload}
-                          disabled={uploadingAvatar}
-                        />
-
-                        {profile?.avatar_url && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              if (!user) return
-
-                              try {
-                                const { error } = await supabase
-                                  .from("profiles")
-                                  .update({ avatar_url: null })
-                                  .eq("user_id", user.id)
-
-                                if (error) throw error
-
-                                setProfile({ ...profile, avatar_url: null })
-                                if (refreshProfile) {
-                                  await refreshProfile()
-                                }
-
-                                toast({
-                                  title: "Avatar removed",
-                                  description: "Your profile picture has been removed.",
-                                })
-                              } catch (error) {
-                                console.error("Error removing avatar:", error)
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to remove your profile picture.",
-                                  variant: "destructive",
-                                })
-                              }
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-purple-500" />
                     Profile Information
                   </CardTitle>
                   <CardDescription>Update your personal information</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="flex items-center gap-4 mb-6">
+                    <Avatar className="h-16 w-16 border-2 border-purple-300/20">
+                      <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white text-xl">
+                        {getInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{fullName || "DreamVault User"}</div>
+                      <div className="text-sm text-muted-foreground">{email}</div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
                     <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} />

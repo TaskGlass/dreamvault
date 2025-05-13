@@ -94,3 +94,43 @@ export async function createUserProfile(userId: string, fullName = "") {
     return { success: false, error }
   }
 }
+
+// Helper function to fix corrupted profiles
+export async function fixCorruptedProfiles() {
+  try {
+    // Get all profiles
+    const { data: profiles, error } = await supabase.from("profiles").select("user_id, avatar_url")
+
+    if (error) {
+      console.error("Error fetching profiles:", error)
+      return { success: false, error }
+    }
+
+    let fixedCount = 0
+
+    // Check each profile for corrupted avatar_url
+    for (const profile of profiles || []) {
+      if (typeof profile.avatar_url === "string" && profile.avatar_url.length > 1000000) {
+        console.log(`Fixing corrupted avatar for user ${profile.user_id}`)
+
+        // Reset the avatar URL
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ avatar_url: null })
+          .eq("user_id", profile.user_id)
+
+        if (!updateError) {
+          fixedCount++
+        }
+      }
+    }
+
+    return {
+      success: true,
+      message: `Fixed ${fixedCount} corrupted profiles`,
+    }
+  } catch (error) {
+    console.error("Error fixing corrupted profiles:", error)
+    return { success: false, error }
+  }
+}

@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { checkDatabaseTables, initializeDatabase, createUserProfile } from "@/lib/db-init"
 import { cn } from "@/lib/utils"
+import { useSupabaseClient } from "@supabase/auth-helpers-react"
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -26,6 +27,8 @@ export default function DashboardPage() {
   const [dbError, setDbError] = useState<string | null>(null)
   const [initializingDb, setInitializingDb] = useState(false)
   const [activeTab, setActiveTab] = useState<"recent" | "insights">("recent")
+  const [avatarError, setAvatarError] = useState(false)
+  const supabase = useSupabaseClient()
 
   useEffect(() => {
     async function fetchData() {
@@ -34,6 +37,7 @@ export default function DashboardPage() {
       try {
         setLoading(true)
         setDbError(null)
+        setAvatarError(false)
 
         // First check if the database tables exist
         const { allTablesExist } = await checkDatabaseTables()
@@ -60,6 +64,26 @@ export default function DashboardPage() {
           }
         }
 
+        // Check if avatar URL is valid and fix if needed
+        if (userProfile && userProfile.avatar_url) {
+          // If avatar URL is extremely long (likely a corrupted base64), reset it
+          if (typeof userProfile.avatar_url === "string" && userProfile.avatar_url.length > 1000000) {
+            console.warn("Avatar URL is too long, resetting it")
+            setAvatarError(true)
+
+            // Reset the avatar URL in the profile
+            await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", user.id)
+
+            // Update user metadata
+            await supabase.auth.updateUser({
+              data: { avatar_url: null },
+            })
+
+            // Update local profile
+            userProfile.avatar_url = null
+          }
+        }
+
         const userDreams = await getDreamsByUserId(user.id)
 
         setDreams(userDreams)
@@ -79,7 +103,19 @@ export default function DashboardPage() {
     }
 
     fetchData()
-  }, [user])
+  }, [user, supabase])
+
+  // Show a toast if avatar error was detected and fixed
+  useEffect(() => {
+    if (avatarError) {
+      toast({
+        title: "Profile picture reset",
+        description:
+          "We detected an issue with your profile picture and have reset it. You can upload a new one in settings.",
+        variant: "warning",
+      })
+    }
+  }, [avatarError, toast])
 
   const handleInitializeDatabase = async () => {
     if (!user) return
@@ -227,6 +263,10 @@ export default function DashboardPage() {
             <AvatarImage
               src={profile?.avatar_url || user?.user_metadata?.avatar_url || ""}
               alt={profile?.full_name || user?.user_metadata?.full_name || "User"}
+              onError={(e) => {
+                // If image fails to load, remove the src to show fallback
+                e.currentTarget.src = ""
+              }}
             />
             <AvatarFallback className="bg-gradient-to-br from-purple-400 to-pink-500 text-white text-lg md:text-xl">
               {getInitials()}
