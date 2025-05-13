@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, AlertCircle, Mail, XCircle } from "lucide-react"
+import { ArrowLeft, AlertCircle, Mail, XCircle, Calendar } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -27,6 +27,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [passwordsMatch, setPasswordsMatch] = useState(true)
   const [name, setName] = useState("")
+  const [birthday, setBirthday] = useState("")
   const [loading, setLoading] = useState(false)
   const [signupComplete, setSignupComplete] = useState(false)
 
@@ -55,10 +56,20 @@ export default function SignupPage() {
       return
     }
 
+    // Validate birthday is provided
+    if (!birthday) {
+      toast({
+        title: "Birthday required",
+        description: "Please enter your birthday for horoscope features.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
-      const { error } = await signUp(email, password, { full_name: name })
+      const { error } = await signUp(email, password, { full_name: name, birthday })
 
       if (error) {
         toast({
@@ -162,6 +173,22 @@ export default function SignupPage() {
                 required
                 className="h-9 border-purple-300/20 focus-visible:ring-purple-500/30"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="birthday">Birthday</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="birthday"
+                  type="date"
+                  placeholder="Select your birthday"
+                  value={birthday}
+                  onChange={(e) => setBirthday(e.target.value)}
+                  required
+                  className="h-9 pl-10 border-purple-300/20 focus-visible:ring-purple-500/30"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Required for horoscope features</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>

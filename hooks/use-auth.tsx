@@ -15,7 +15,7 @@ type AuthContextType = {
   signUp: (
     email: string,
     password: string,
-    metadata?: { full_name?: string },
+    metadata?: { full_name?: string; birthday?: string },
   ) => Promise<{
     error: any | null
     data: any | null
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Update the signUp function in the AuthProvider component
-  const signUp = async (email: string, password: string, metadata?: { full_name?: string }) => {
+  const signUp = async (email: string, password: string, metadata?: { full_name?: string; birthday?: string }) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -118,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const { error: profileError } = await supabase.from("profiles").insert({
             user_id: data.user.id,
             full_name: metadata?.full_name || "",
+            birthday: metadata?.birthday || null,
             subscription_tier: "free",
             dreams_count: 0,
             dreams_limit: 5,

@@ -25,7 +25,7 @@ const plans = [
       "15 dreams per month",
       "Mood & emotion insights",
       "Personalized affirmations",
-      "AI-generated dream art",
+      "Daily horoscope integration",
       "24h support",
     ],
     cta: "Start Free Trial",
@@ -40,9 +40,9 @@ const plans = [
     description: "The complete dream analysis experience",
     features: [
       "30 dreams per month",
-      "Voice input & transcription",
       "Weekly dream summaries",
       "Shareable reports",
+      "Advanced horoscope analysis",
       "All Starter features",
       "Priority support",
     ],
@@ -54,7 +54,7 @@ const plans = [
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="py-20">
+    <section id="pricing" className="container mx-auto px-4 py-20">
       <div className="text-center mb-16">
         <h2 className="text-3xl font-bold mb-4">Choose Your Dream Journey</h2>
         <p className="text-muted-foreground max-w-2xl mx-auto">

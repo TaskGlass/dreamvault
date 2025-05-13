@@ -100,6 +100,7 @@ export interface Database {
           dreams_limit: number
           created_at: string
           avatar_url: string | null
+          birthday: string | null
         }
         Insert: {
           id?: string
@@ -110,6 +111,7 @@ export interface Database {
           dreams_limit?: number
           created_at?: string
           avatar_url?: string | null
+          birthday?: string | null
         }
         Update: {
           id?: string
@@ -120,6 +122,7 @@ export interface Database {
           dreams_limit?: number
           created_at?: string
           avatar_url?: string | null
+          birthday?: string | null
         }
       }
     }

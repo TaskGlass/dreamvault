@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Brain, Sparkles, Save, Share2, Download, ArrowLeft, Loader2 } from "lucide-react"
+import { Brain, Sparkles, Save, Share2, ArrowLeft, Loader2, Star } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { shareDreamContent } from "@/lib/dream-service"
+import { useAuth } from "@/hooks/use-auth"
 
 interface DreamInterpretationProps {
   interpretation: any
@@ -18,18 +19,19 @@ interface DreamInterpretationProps {
 
 export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId }: DreamInterpretationProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [saving, setSaving] = useState(false)
-  const [artworkUrl, setArtworkUrl] = useState<string | null>(null)
-  const [loadingArtwork, setLoadingArtwork] = useState(false)
-  const [sharingArtwork, setSharingArtwork] = useState(false)
+  const [horoscope, setHoroscope] = useState<any>(null)
+  const [zodiacSign, setZodiacSign] = useState<string>("")
+  const [loadingHoroscope, setLoadingHoroscope] = useState(false)
   const [sharingAffirmation, setSharingAffirmation] = useState(false)
 
   useEffect(() => {
-    // Generate artwork when component mounts
-    if (interpretation && !artworkUrl) {
-      generateArtwork()
+    // Generate horoscope when component mounts
+    if (interpretation && !horoscope && user) {
+      generateHoroscope()
     }
-  }, [interpretation])
+  }, [interpretation, user])
 
   const handleSave = async () => {
     setSaving(true)
@@ -37,67 +39,35 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
     setSaving(false)
   }
 
-  const generateArtwork = async () => {
-    if (!interpretation) return
+  const generateHoroscope = async () => {
+    if (!interpretation || !user) return
 
-    setLoadingArtwork(true)
+    setLoadingHoroscope(true)
     try {
-      const response = await fetch("/api/generate-artwork", {
+      const response = await fetch("/api/generate-horoscope", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ dreamText, interpretation }),
+        body: JSON.stringify({ dreamText, interpretation, userId: user.id }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to generate artwork")
+        throw new Error("Failed to generate horoscope")
       }
 
       const data = await response.json()
-      setArtworkUrl(data.imageUrl)
+      setHoroscope(data.horoscope)
+      setZodiacSign(data.zodiacSign)
     } catch (error) {
-      console.error("Error generating artwork:", error)
+      console.error("Error generating horoscope:", error)
       toast({
         title: "Error",
-        description: "Failed to generate dream artwork. Please try again.",
+        description: "Failed to generate horoscope. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setLoadingArtwork(false)
-    }
-  }
-
-  const handleShareArtwork = async () => {
-    if (!artworkUrl) return
-
-    setSharingArtwork(true)
-    try {
-      const { shareUrl, error } = await shareDreamContent(
-        "artwork",
-        artworkUrl,
-        dreamId,
-        interpretation?.summary ? `Dream: ${interpretation.summary.substring(0, 50)}...` : "Dream Artwork",
-      )
-
-      if (error) throw error
-
-      if (shareUrl) {
-        await navigator.clipboard.writeText(shareUrl)
-        toast({
-          title: "Artwork shared",
-          description: "Share link copied to clipboard!",
-        })
-      }
-    } catch (error) {
-      console.error("Error sharing artwork:", error)
-      toast({
-        title: "Error",
-        description: "Failed to share artwork. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setSharingArtwork(false)
+      setLoadingHoroscope(false)
     }
   }
 
@@ -186,25 +156,9 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
             <Sparkles className="h-4 w-4" />
             <span className="hidden sm:inline">Symbols</span>
           </TabsTrigger>
-          <TabsTrigger value="insights" className="flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 12h5"></path>
-              <path d="M17 12h5"></path>
-              <path d="M12 2v5"></path>
-              <path d="M12 17v5"></path>
-              <circle cx="12" cy="12" r="4"></circle>
-            </svg>
-            <span className="hidden sm:inline">Insights</span>
+          <TabsTrigger value="horoscope" className="flex items-center gap-2">
+            <Star className="h-4 w-4" />
+            <span className="hidden sm:inline">Horoscope</span>
           </TabsTrigger>
         </TabsList>
 
@@ -286,130 +240,69 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
           </Card>
         </TabsContent>
 
-        <TabsContent value="insights">
+        <TabsContent value="horoscope">
           <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-purple-500"
-                >
-                  <path d="M2 12h5"></path>
-                  <path d="M17 12h5"></path>
-                  <path d="M12 2v5"></path>
-                  <path d="M12 17v5"></path>
-                  <circle cx="12" cy="12" r="4"></circle>
-                </svg>
-                Deeper Insights
+                <Star className="h-5 w-5 text-purple-500" />
+                Cosmic Dream Connection
               </CardTitle>
-              <CardDescription>Personal meaning and recommendations</CardDescription>
+              <CardDescription>How your dream relates to your daily horoscope</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <h3 className="font-medium mb-2 text-sm text-muted-foreground text-center sm:text-left">
-                  PERSONAL INSIGHTS
-                </h3>
-                <p className="text-muted-foreground text-center sm:text-left">{interpretation.insights}</p>
-              </div>
+              {loadingHoroscope ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-12 w-12 text-purple-500 animate-spin mb-4" />
+                  <p className="text-muted-foreground">Consulting the stars...</p>
+                </div>
+              ) : horoscope ? (
+                <>
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="relative">
+                      <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
+                      <div className="relative rounded-full p-6 border border-purple-300/20 backdrop-blur-sm bg-background/80">
+                        <Star className="h-12 w-12 text-yellow-400" />
+                      </div>
+                    </div>
+                    <div className="ml-6">
+                      <h3 className="text-2xl font-bold">{zodiacSign}</h3>
+                      <p className="text-muted-foreground">Your Zodiac Sign</p>
+                    </div>
+                  </div>
 
-              <div>
-                <h3 className="font-medium mb-2 text-sm text-muted-foreground text-center sm:text-left">
-                  RECOMMENDATIONS
-                </h3>
-                <p className="text-muted-foreground text-center sm:text-left">{interpretation.recommendations}</p>
-              </div>
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm text-muted-foreground">TODAY'S HOROSCOPE</h3>
+                    <p className="text-lg">{horoscope.dailyHoroscope}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm text-muted-foreground">DREAM & STARS CONNECTION</h3>
+                    <p className="text-muted-foreground">{horoscope.dreamConnection}</p>
+                  </div>
+
+                  <div>
+                    <h3 className="font-medium mb-2 text-sm text-muted-foreground">COSMIC INSIGHT</h3>
+                    <p className="text-muted-foreground">{horoscope.cosmicInsight}</p>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-purple-500/30 to-indigo-500/30 opacity-75 blur"></div>
+                    <div className="relative rounded-lg p-6 border border-purple-300/20 backdrop-blur-sm bg-background/80">
+                      <h3 className="font-medium mb-2 text-center">ASTROLOGICAL ADVICE</h3>
+                      <p className="text-center italic">{horoscope.advice}</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Button onClick={generateHoroscope}>Generate Horoscope</Button>
+                </div>
+              )}
             </CardContent>
-            <CardFooter className="border-t border-border/50 bg-muted/50 flex justify-center sm:justify-between p-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1"
-                onClick={handleShareAffirmation}
-                disabled={sharingAffirmation}
-              >
-                {sharingAffirmation ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Share2 className="h-3.5 w-3.5" />
-                )}
-                <span className="hidden sm:inline">{sharingAffirmation ? "Sharing..." : "Share Affirmation"}</span>
-              </Button>
-              <Button variant="ghost" size="sm" className="gap-1 hidden sm:flex" onClick={handleSave}>
-                <Save className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Save to Journal</span>
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-500" />
-            Dream Artwork
-          </CardTitle>
-          <CardDescription>AI-generated visualization of your dream</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-6">
-          {loadingArtwork ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="h-12 w-12 text-purple-500 animate-spin mb-4" />
-              <p className="text-muted-foreground">Generating dream artwork...</p>
-            </div>
-          ) : artworkUrl ? (
-            <div className="relative w-full max-w-2xl mx-auto">
-              <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
-              <div className="relative rounded-lg overflow-hidden">
-                <img
-                  src={artworkUrl || "/placeholder.svg"}
-                  alt="AI-generated dream artwork"
-                  className="w-full h-auto"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Button onClick={generateArtwork}>Generate Artwork</Button>
-            </div>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-center sm:justify-end gap-2 border-t border-border/50 p-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1"
-            onClick={handleShareArtwork}
-            disabled={!artworkUrl || sharingArtwork}
-          >
-            {sharingArtwork ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}
-            <span className="hidden sm:inline">{sharingArtwork ? "Sharing..." : "Share"}</span>
-          </Button>
-          <Button variant="ghost" size="sm" className="gap-1" disabled={!artworkUrl} asChild>
-            {artworkUrl ? (
-              <a href={artworkUrl} download="dream-artwork.jpg" target="_blank" rel="noopener noreferrer">
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Download</span>
-              </a>
-            ) : (
-              <span>
-                <Download className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Download</span>
-              </span>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
     </div>
   )
 }

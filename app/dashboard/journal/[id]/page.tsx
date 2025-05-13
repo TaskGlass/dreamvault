@@ -8,24 +8,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  ArrowLeft,
-  Calendar,
-  Brain,
-  Sparkles,
-  PaintBucket,
-  Trash2,
-  Share2,
-  Download,
-  Loader2,
-  PlusCircle,
-} from "lucide-react"
+import { ArrowLeft, Calendar, Brain, Sparkles, Trash2, Share2, Loader2, PlusCircle, Star } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
-import { getDreamById, deleteDream, shareDreamContent, generateDreamArtwork } from "@/lib/dream-service"
+import { getDreamById, deleteDream, shareDreamContent } from "@/lib/dream-service"
 import type { Dream } from "@/lib/dream-service"
-import { supabase } from "@/lib/supabase"
 
 export default function DreamDetailPage() {
   const params = useParams()
@@ -35,9 +23,10 @@ export default function DreamDetailPage() {
   const [dream, setDream] = useState<Dream | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
-  const [sharingArtwork, setSharingArtwork] = useState(false)
   const [sharingAffirmation, setSharingAffirmation] = useState(false)
-  const [generatingArtwork, setGeneratingArtwork] = useState(false)
+  const [horoscope, setHoroscope] = useState<any>(null)
+  const [zodiacSign, setZodiacSign] = useState<string>("")
+  const [loadingHoroscope, setLoadingHoroscope] = useState(false)
 
   useEffect(() => {
     async function fetchDream() {
@@ -93,39 +82,6 @@ export default function DreamDetailPage() {
     }
   }
 
-  const handleShareArtwork = async () => {
-    if (!dream || !dream.artwork_url) return
-
-    setSharingArtwork(true)
-    try {
-      const { shareUrl, error } = await shareDreamContent(
-        "artwork",
-        dream.artwork_url,
-        dream.id,
-        `Dream: ${dream.title}`,
-      )
-
-      if (error) throw error
-
-      if (shareUrl) {
-        await navigator.clipboard.writeText(shareUrl)
-        toast({
-          title: "Artwork shared",
-          description: "Share link copied to clipboard!",
-        })
-      }
-    } catch (error) {
-      console.error("Error sharing artwork:", error)
-      toast({
-        title: "Error",
-        description: "Failed to share artwork. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setSharingArtwork(false)
-    }
-  }
-
   const handleShareAffirmation = async () => {
     if (!dream || !dream.interpretation) return
 
@@ -162,57 +118,39 @@ export default function DreamDetailPage() {
     }
   }
 
-  const handleGenerateArtwork = async () => {
-    if (!dream || !dream.interpretation) return
+  const generateHoroscope = async () => {
+    if (!dream || !dream.interpretation || !user) return
 
-    setGeneratingArtwork(true)
+    setLoadingHoroscope(true)
     try {
-      const artworkUrl = await generateDreamArtwork(dream.id, dream.content, dream.interpretation)
+      const response = await fetch("/api/generate-horoscope", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dreamText: dream.content,
+          interpretation: dream.interpretation,
+          userId: user.id,
+        }),
+      })
 
-      if (artworkUrl) {
-        // Update the dream with the artwork URL
-        setDream({
-          ...dream,
-          artwork_url: artworkUrl,
-        })
-
-        // Also update in the database
-        try {
-          const { error } = await supabase.from("dreams").update({ artwork_url: artworkUrl }).eq("id", dream.id)
-
-          if (error) {
-            console.error("Error updating dream with artwork URL:", error)
-          }
-        } catch (dbError) {
-          console.error("Database error:", dbError)
-        }
-
-        toast({
-          title: "Artwork generated",
-          description: "Dream artwork has been generated successfully.",
-        })
-      } else {
-        throw new Error("Failed to generate artwork")
-      }
-    } catch (error: any) {
-      console.error("Error generating artwork:", error)
-
-      // Provide more specific error messages for common network issues
-      let errorMessage = "Failed to generate dream artwork. Please try again."
-
-      if (error.message === "Failed to fetch") {
-        errorMessage = "Network error. Please check your internet connection and try again."
-      } else if (error.message) {
-        errorMessage = error.message
+      if (!response.ok) {
+        throw new Error("Failed to generate horoscope")
       }
 
+      const data = await response.json()
+      setHoroscope(data.horoscope)
+      setZodiacSign(data.zodiacSign)
+    } catch (error) {
+      console.error("Error generating horoscope:", error)
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to generate horoscope. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setGeneratingArtwork(false)
+      setLoadingHoroscope(false)
     }
   }
 
@@ -306,9 +244,9 @@ export default function DreamDetailPage() {
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Affirmation</span>
             </TabsTrigger>
-            <TabsTrigger value="artwork" className="flex items-center gap-2">
-              <PaintBucket className="h-4 w-4" />
-              <span className="hidden sm:inline">Dream Art</span>
+            <TabsTrigger value="horoscope" className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              <span className="hidden sm:inline">Horoscope</span>
             </TabsTrigger>
           </TabsList>
 
@@ -403,73 +341,71 @@ export default function DreamDetailPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="artwork">
+          <TabsContent value="horoscope">
             <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 w-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 justify-center sm:justify-start">
-                  <PaintBucket className="h-5 w-5 text-purple-500" />
-                  Dream Artwork
+                  <Star className="h-5 w-5 text-purple-500" />
+                  Cosmic Dream Connection
                 </CardTitle>
                 <CardDescription className="text-center sm:text-left">
-                  AI-generated visualization of your dream
+                  How your dream relates to your daily horoscope
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-6">
-                {generatingArtwork ? (
+              <CardContent className="space-y-6">
+                {loadingHoroscope ? (
                   <div className="flex flex-col items-center justify-center py-12">
                     <Loader2 className="h-12 w-12 text-purple-500 animate-spin mb-4" />
-                    <p className="text-muted-foreground">Generating dream artwork...</p>
+                    <p className="text-muted-foreground">Consulting the stars...</p>
                   </div>
-                ) : dream.artwork_url ? (
-                  <div className="relative w-full max-w-2xl mx-auto">
-                    <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
-                    <div className="relative rounded-lg overflow-hidden">
-                      <img
-                        src={dream.artwork_url || "/placeholder.svg"}
-                        alt="AI-generated dream artwork"
-                        className="w-full h-auto"
-                        onError={(e) => {
-                          // If image fails to load, replace with placeholder
-                          e.currentTarget.src = "/placeholder.svg?key=ufwqy"
-                          console.error("Failed to load artwork image, using placeholder")
-                        }}
-                      />
+                ) : horoscope ? (
+                  <>
+                    <div className="flex items-center justify-center mb-6">
+                      <div className="relative">
+                        <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
+                        <div className="relative rounded-full p-6 border border-purple-300/20 backdrop-blur-sm bg-background/80">
+                          <Star className="h-12 w-12 text-yellow-400" />
+                        </div>
+                      </div>
+                      <div className="ml-6">
+                        <h3 className="text-2xl font-bold">{zodiacSign}</h3>
+                        <p className="text-muted-foreground">Your Zodiac Sign</p>
+                      </div>
                     </div>
-                  </div>
+
+                    <div>
+                      <h3 className="font-medium mb-2 text-sm text-muted-foreground">TODAY'S HOROSCOPE</h3>
+                      <p className="text-lg">{horoscope.dailyHoroscope}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-medium mb-2 text-sm text-muted-foreground">DREAM & STARS CONNECTION</h3>
+                      <p className="text-muted-foreground">{horoscope.dreamConnection}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-medium mb-2 text-sm text-muted-foreground">COSMIC INSIGHT</h3>
+                      <p className="text-muted-foreground">{horoscope.cosmicInsight}</p>
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-purple-500/30 to-indigo-500/30 opacity-75 blur"></div>
+                      <div className="relative rounded-lg p-6 border border-purple-300/20 backdrop-blur-sm bg-background/80">
+                        <h3 className="font-medium mb-2 text-center">ASTROLOGICAL ADVICE</h3>
+                        <p className="text-center italic">{horoscope.advice}</p>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">
                     <div className="bg-muted/30 rounded-lg p-8 mb-6 text-center">
                       <PlusCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground mb-4">No artwork has been generated for this dream yet.</p>
-                      <Button onClick={handleGenerateArtwork}>Generate Artwork</Button>
+                      <p className="text-muted-foreground mb-4">No horoscope has been generated for this dream yet.</p>
+                      <Button onClick={generateHoroscope}>Generate Horoscope</Button>
                     </div>
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="flex justify-center sm:justify-end gap-2 border-t border-border/50 p-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1"
-                  onClick={handleShareArtwork}
-                  disabled={!dream.artwork_url || sharingArtwork}
-                >
-                  {sharingArtwork ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Share2 className="h-3.5 w-3.5" />
-                  )}
-                  <span className="hidden sm:inline">{sharingArtwork ? "Sharing..." : "Share"}</span>
-                </Button>
-                {dream.artwork_url && (
-                  <Button variant="ghost" size="sm" className="gap-1" asChild>
-                    <a href={dream.artwork_url} download="dream-artwork.jpg" target="_blank" rel="noopener noreferrer">
-                      <Download className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Download</span>
-                    </a>
-                  </Button>
-                )}
-              </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>

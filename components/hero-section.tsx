@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 
 export function HeroSection() {
   return (
-    <section className="py-20 flex flex-col items-center text-center">
+    <section className="container mx-auto px-4 py-20 flex flex-col items-center text-center">
       <div className="space-y-4 max-w-3xl">
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-500 to-indigo-400">
           Unlock the Secrets of
