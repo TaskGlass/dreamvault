@@ -2,29 +2,19 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Mic, Loader2, Brain, Sparkles, Info, Square, AlertTriangle } from "lucide-react"
+import { Loader2, Brain, Sparkles, Info, AlertTriangle } from "lucide-react"
 import { DreamInterpretation } from "@/components/dream-interpretation"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { createDream } from "@/lib/dream-service"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Progress } from "@/components/ui/progress"
-
-// Declare SpeechRecognition and webkitSpeechRecognition types
-declare global {
-  interface Window {
-    SpeechRecognition: any
-    webkitSpeechRecognition: any
-  }
-}
 
 export default function InterpretDreamPage() {
   const router = useRouter()
@@ -33,157 +23,10 @@ export default function InterpretDreamPage() {
 
   const [dreamTitle, setDreamTitle] = useState("")
   const [dreamText, setDreamText] = useState("")
-  const [isRecording, setIsRecording] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [interpretation, setInterpretation] = useState<any | null>(null)
   const [step, setStep] = useState<"input" | "processing" | "result">("input")
-  const [autoGenerateTitle, setAutoGenerateTitle] = useState(true)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [transcribing, setTranscribing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const recognitionRef = useRef<any>(null)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Initialize speech recognition
-  useEffect(() => {
-    if ((typeof window !== "undefined" && "SpeechRecognition" in window) || "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-      recognitionRef.current = new SpeechRecognition()
-      recognitionRef.current.continuous = true
-      recognitionRef.current.interimResults = true
-      recognitionRef.current.lang = "en-US"
-
-      recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = ""
-        let finalTranscript = dreamText
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript
-          if (event.results[i].isFinal) {
-            finalTranscript += " " + transcript
-          } else {
-            interimTranscript += transcript
-          }
-        }
-
-        setDreamText(finalTranscript.trim())
-      }
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error)
-        stopRecording()
-        toast({
-          title: "Microphone Error",
-          description: `Error: ${event.error}. Please check your microphone permissions.`,
-          variant: "destructive",
-        })
-      }
-
-      recognitionRef.current.onend = () => {
-        if (isRecording) {
-          // If we're still supposed to be recording, restart it
-          // This helps with the continuous recording as the API sometimes stops
-          recognitionRef.current?.start()
-        } else {
-          setTranscribing(true)
-          // Generate a title if auto-generate is enabled and we have text
-          if (autoGenerateTitle && dreamText.trim().length > 0) {
-            generateDreamTitle(dreamText)
-          }
-          setTranscribing(false)
-        }
-      }
-    } else {
-      toast({
-        title: "Speech Recognition Not Supported",
-        description: "Your browser doesn't support speech recognition. Please try a different browser.",
-        variant: "destructive",
-      })
-    }
-
-    return () => {
-      stopRecording()
-      if (recognitionRef.current) {
-        recognitionRef.current.onresult = null
-        recognitionRef.current.onerror = null
-        recognitionRef.current.onend = null
-      }
-    }
-  }, [dreamText, isRecording, autoGenerateTitle, toast])
-
-  // Timer for recording duration
-  useEffect(() => {
-    if (isRecording) {
-      timerRef.current = setInterval(() => {
-        setRecordingTime((prev) => prev + 1)
-      }, 1000)
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-      setRecordingTime(0)
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
-      }
-    }
-  }, [isRecording])
-
-  const startRecording = () => {
-    if (!recognitionRef.current) return
-
-    try {
-      recognitionRef.current.start()
-      setIsRecording(true)
-      toast({
-        title: "Recording Started",
-        description: "Speak clearly to describe your dream...",
-      })
-    } catch (error) {
-      console.error("Error starting recording:", error)
-      toast({
-        title: "Recording Error",
-        description: "Could not start recording. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const stopRecording = () => {
-    if (!recognitionRef.current) return
-
-    try {
-      recognitionRef.current.stop()
-      setIsRecording(false)
-      if (dreamText.trim().length > 0) {
-        toast({
-          title: "Recording Stopped",
-          description: "Your dream description has been captured.",
-        })
-      }
-    } catch (error) {
-      console.error("Error stopping recording:", error)
-    }
-  }
-
-  const handleVoiceInput = () => {
-    if (isRecording) {
-      stopRecording()
-    } else {
-      startRecording()
-    }
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
 
   const generateDreamTitle = async (text: string) => {
     if (!text.trim()) return
@@ -380,12 +223,6 @@ export default function InterpretDreamPage() {
                   onChange={(e) => setDreamTitle(e.target.value)}
                   className="border-purple-300/20 focus-visible:ring-purple-500/30"
                 />
-                <div className="flex items-center gap-2">
-                  <Switch id="auto-title" checked={autoGenerateTitle} onCheckedChange={setAutoGenerateTitle} />
-                  <Label htmlFor="auto-title" className="text-sm text-muted-foreground">
-                    Auto-generate title when using voice input
-                  </Label>
-                </div>
               </div>
 
               <div className="space-y-2">
@@ -403,39 +240,8 @@ export default function InterpretDreamPage() {
                   <p className="text-xs text-muted-foreground">
                     {dreamText.length > 0 ? `${dreamText.length} characters` : "Start typing your dream..."}
                   </p>
-                  {isRecording && (
-                    <div className="flex items-center gap-2">
-                      <span className="animate-pulse text-red-500">●</span>
-                      <span className="text-xs">{formatTime(recordingTime)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {isRecording && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="animate-pulse text-red-500">●</span>
-                      <span className="font-medium">Recording...</span>
-                    </div>
-                    <span className="text-sm">{formatTime(recordingTime)}</span>
-                  </div>
-                  <Progress value={Math.min((recordingTime / 120) * 100, 100)} className="h-1 bg-red-200/20" />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Speak clearly to describe your dream. Click the stop button when finished.
-                  </p>
-                </div>
-              )}
-
-              {transcribing && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-4">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                    <span className="font-medium">Processing speech...</span>
-                  </div>
-                </div>
-              )}
 
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-md p-4">
@@ -450,30 +256,11 @@ export default function InterpretDreamPage() {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row justify-between gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={`rounded-full ${isRecording ? "bg-red-500/20 text-red-500 border-red-500" : ""}`}
-                  onClick={handleVoiceInput}
-                >
-                  {isRecording ? (
-                    <>
-                      <Square className="h-4 w-4 mr-2" />
-                      Stop Recording
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Voice Input
-                    </>
-                  )}
-                </Button>
-
+              <div className="flex justify-end">
                 <Button
                   type="submit"
                   className="rounded-full gap-2 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 shadow-md shadow-purple-500/10"
-                  disabled={!dreamText.trim() || isLoading || isRecording}
+                  disabled={!dreamText.trim() || isLoading}
                 >
                   {isLoading ? (
                     <>

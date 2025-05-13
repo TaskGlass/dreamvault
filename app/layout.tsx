@@ -4,13 +4,13 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/hooks/use-auth"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "DreamVault | AI Dream Interpretation",
-  description: "Unlock the meaning of your dreams with AI-powered interpretation",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  title: "DreamVault - AI Dream Journal & Interpretation",
+  description: "Record and interpret your dreams with AI-powered insights",
     generator: 'v0.dev'
 }
 
@@ -22,9 +22,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <div className="min-h-screen w-full">{children}</div>
+            {children}
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

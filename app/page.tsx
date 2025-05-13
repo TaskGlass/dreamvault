@@ -1,24 +1,24 @@
 import { HeroSection } from "@/components/hero-section"
 import { FeatureSection } from "@/components/feature-section"
 import { PricingSection } from "@/components/pricing-section"
-import { MobileNav } from "@/components/mobile-nav"
+import { SiteHeader } from "@/components/site-header"
 
 export default function Home() {
   return (
-    <main className="min-h-screen w-full bg-gradient-to-b from-background/80 to-background">
-      <div className="w-full px-4 sm:px-6 md:px-8 mx-auto">
-        <MobileNav />
-
+    <div className="flex min-h-screen flex-col">
+      <SiteHeader />
+      <main className="flex-1">
         <HeroSection />
-
         <FeatureSection />
-
         <PricingSection />
-
-        <footer className="py-12 text-center text-muted-foreground">
-          <p>© 2025 DreamVault. All rights reserved.</p>
-        </footer>
-      </div>
-    </main>
+      </main>
+      <footer className="border-t py-6 md:py-0">
+        <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+          <p className="text-center text-sm leading-loose text-muted-foreground md:text-left">
+            &copy; {new Date().getFullYear()} DreamVault. All rights reserved.
+          </p>
+        </div>
+      </footer>
+    </div>
   )
 }
