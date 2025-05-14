@@ -27,18 +27,23 @@ export function MobileHeader() {
     return nameParts[0].substring(0, 2).toUpperCase()
   }
 
+  // Function to close the menu when a link is clicked
+  const handleLinkClick = () => {
+    setOpen(false)
+  }
+
   return (
     <header className="md:hidden border-b p-4 flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md z-20">
       <div className="flex items-center">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="mr-3 h-11 w-11">
-              <Menu className="h-7 w-7" />
+              <Menu className="h-8 w-8" /> {/* Increased size from h-7 w-7 to h-8 w-8 */}
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0">
-            <DashboardNav />
+            <DashboardNav onLinkClick={handleLinkClick} />
           </SheetContent>
         </Sheet>
 

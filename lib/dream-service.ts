@@ -6,7 +6,7 @@ export type Dream = Database["public"]["Tables"]["dreams"]["Row"] & {
 }
 
 // Check if the dreams table exists
-async function checkDreamsTable(): Promise<boolean> {
+export async function checkDreamsTable(): Promise<boolean> {
   try {
     const { error } = await supabase.from("dreams").select("count", { count: "exact", head: true }).limit(1)
 
@@ -18,7 +18,7 @@ async function checkDreamsTable(): Promise<boolean> {
 }
 
 // Add this function at the top with the other check function
-async function checkProfilesTable(): Promise<boolean> {
+export async function checkProfilesTable(): Promise<boolean> {
   try {
     const { error } = await supabase.from("profiles").select("count", { count: "exact", head: true }).limit(1)
 
@@ -29,24 +29,34 @@ async function checkProfilesTable(): Promise<boolean> {
   }
 }
 
-// Check if the artwork_url column exists in the dreams table
-async function checkArtworkUrlColumn(): Promise<boolean> {
+// Check if a specific column exists in a table
+export async function checkColumnExists(table: string, column: string): Promise<boolean> {
   try {
     const { data, error } = await supabase.rpc("check_column_exists", {
-      p_table: "dreams",
-      p_column: "artwork_url",
+      p_table: table,
+      p_column: column,
     })
 
     if (error) {
-      console.error("Error checking artwork_url column:", error)
+      console.error(`Error checking if column ${column} exists in table ${table}:`, error)
       return false
     }
 
     return data || false
   } catch (error) {
-    console.error("Error checking artwork_url column:", error)
+    console.error(`Error checking if column ${column} exists in table ${table}:`, error)
     return false
   }
+}
+
+// Check if the artwork_url column exists in the dreams table
+export async function checkArtworkUrlColumn(): Promise<boolean> {
+  return checkColumnExists("dreams", "artwork_url")
+}
+
+// Check if the birthday column exists in the profiles table
+export async function checkBirthdayColumn(): Promise<boolean> {
+  return checkColumnExists("profiles", "birthday")
 }
 
 export async function getDreamsByUserId(userId: string): Promise<Dream[]> {
@@ -298,8 +308,16 @@ export async function getUserProfile(userId: string) {
       return null
     }
 
+    // Check if birthday column exists
+    const birthdayColumnExists = await checkBirthdayColumn()
+
+    // Select all columns except birthday if it doesn't exist
+    const selectQuery = birthdayColumnExists
+      ? "*"
+      : "id, user_id, full_name, subscription_tier, dreams_count, dreams_limit, created_at, avatar_url"
+
     // Remove the .single() method to avoid the error when no rows are found
-    const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId)
+    const { data, error } = await supabase.from("profiles").select(selectQuery).eq("user_id", userId)
 
     if (error) {
       console.error("Error fetching user profile:", error)
@@ -337,6 +355,15 @@ export async function updateUserProfile(
       return {
         success: false,
         error: new Error("Profiles table does not exist. Please initialize the database first."),
+      }
+    }
+
+    // Check if birthday column exists if we're trying to update it
+    if ("birthday" in updates) {
+      const birthdayColumnExists = await checkBirthdayColumn()
+      if (!birthdayColumnExists) {
+        console.warn("Birthday column does not exist. Removing from updates.")
+        delete updates.birthday
       }
     }
 
@@ -450,5 +477,63 @@ export async function getSharedContent(shareId: string): Promise<{ data: any; er
   } catch (error) {
     console.error("Error getting shared content:", error)
     return { data: null, error }
+  }
+}
+
+// New function to get user's zodiac sign based on birthday
+export function getZodiacSign(birthday: string | null): string | null {
+  if (!birthday) return null
+
+  try {
+    const date = new Date(birthday)
+    const month = date.getMonth() + 1 // JavaScript months are 0-indexed
+    const day = date.getDate()
+
+    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries"
+    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus"
+    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini"
+    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer"
+    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo"
+    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo"
+    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra"
+    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio"
+    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius"
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn"
+    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius"
+    if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) return "Pisces"
+
+    return null
+  } catch (error) {
+    console.error("Error determining zodiac sign:", error)
+    return null
+  }
+}
+
+// Function to run the migration to add the birthday column
+export async function addBirthdayColumn(): Promise<{ success: boolean; error: any }> {
+  try {
+    // Check if the column already exists
+    const birthdayColumnExists = await checkBirthdayColumn()
+
+    if (birthdayColumnExists) {
+      console.log("Birthday column already exists.")
+      return { success: true, error: null }
+    }
+
+    // Execute the SQL to add the column
+    const { error } = await supabase.rpc("run_sql", {
+      sql: "ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS birthday DATE;",
+    })
+
+    if (error) {
+      console.error("Error adding birthday column:", error)
+      return { success: false, error }
+    }
+
+    console.log("Birthday column added successfully.")
+    return { success: true, error: null }
+  } catch (error) {
+    console.error("Unexpected error adding birthday column:", error)
+    return { success: false, error }
   }
 }
