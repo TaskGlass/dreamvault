@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { updateUserProfile, getUserProfile } from "@/lib/dream-service"
-import { Loader2, Calendar, ArrowLeft } from "lucide-react"
+import { Loader2, Calendar, ArrowLeft, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Link from "next/link"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function BirthdaySettingsPage() {
   const { user } = useAuth()
@@ -21,6 +23,7 @@ export default function BirthdaySettingsPage() {
   const [day, setDay] = useState<string>("")
   const [year, setYear] = useState<string>("")
   const [daysInMonth, setDaysInMonth] = useState<number[]>([])
+  const [birthdayColumnExists, setBirthdayColumnExists] = useState(true)
 
   // Generate arrays for the dropdowns
   const years = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i)
@@ -57,12 +60,29 @@ export default function BirthdaySettingsPage() {
     }
   }, [month, year])
 
+  // Check if birthday column exists
+  const checkBirthdayColumn = async () => {
+    try {
+      const response = await fetch("/api/check-birthday-column")
+      const data = await response.json()
+
+      if (!data.exists) {
+        setBirthdayColumnExists(false)
+      }
+    } catch (error) {
+      console.error("Error checking birthday column:", error)
+    }
+  }
+
   // Fetch user profile on mount
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return
 
       try {
+        // Check if birthday column exists
+        await checkBirthdayColumn()
+
         const profile = await getUserProfile(user.id)
 
         if (profile && profile.birthday) {
@@ -128,6 +148,33 @@ export default function BirthdaySettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+      </div>
+    )
+  }
+
+  if (!birthdayColumnExists) {
+    return (
+      <div className="container max-w-2xl py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-red-500">Database Migration Required</CardTitle>
+            <CardDescription>The birthday column is missing from the profiles table</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert className="bg-red-50 border-red-200 mb-4">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertTitle>Migration Required</AlertTitle>
+              <AlertDescription>
+                You need to run the database migration to add the birthday column before you can set your birthday.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+          <CardFooter className="flex justify-end space-x-4">
+            <Link href="/run-migration">
+              <Button>Run Migration</Button>
+            </Link>
+          </CardFooter>
+        </Card>
       </div>
     )
   }
