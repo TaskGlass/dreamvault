@@ -10,10 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, AlertCircle, Mail, XCircle, Calendar } from "lucide-react"
+import { ArrowLeft, AlertCircle, Mail, XCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function SignupPage() {
   const searchParams = useSearchParams()
@@ -27,9 +28,48 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [passwordsMatch, setPasswordsMatch] = useState(true)
   const [name, setName] = useState("")
-  const [birthday, setBirthday] = useState("")
+
+  // Birthday state
+  const [birthYear, setBirthYear] = useState("")
+  const [birthMonth, setBirthMonth] = useState("")
+  const [birthDay, setBirthDay] = useState("")
+
   const [loading, setLoading] = useState(false)
   const [signupComplete, setSignupComplete] = useState(false)
+
+  // Generate arrays for the dropdown options
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 100 }, (_, i) => (currentYear - 100 + i).toString())
+  const months = [
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ]
+
+  // Calculate days in month based on selected year and month
+  const getDaysInMonth = (year: string, month: string) => {
+    if (!year || !month) return Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, "0"))
+
+    const daysInMonth = new Date(Number.parseInt(year), Number.parseInt(month), 0).getDate()
+    return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString().padStart(2, "0"))
+  }
+
+  const days = getDaysInMonth(birthYear, birthMonth)
+
+  // Format birthday in YYYY-MM-DD format for database
+  const getBirthdayString = () => {
+    if (!birthYear || !birthMonth || !birthDay) return ""
+    return `${birthYear}-${birthMonth}-${birthDay}`
+  }
 
   // Check if passwords match whenever either password field changes
   useEffect(() => {
@@ -39,6 +79,15 @@ export default function SignupPage() {
       setPasswordsMatch(true) // Don't show error when confirm field is empty
     }
   }, [password, confirmPassword])
+
+  // Recalculate days when year or month changes
+  useEffect(() => {
+    // If the selected day is greater than days in the new month, reset to the last day of the month
+    const daysInMonth = getDaysInMonth(birthYear, birthMonth).length
+    if (birthDay && Number.parseInt(birthDay) > daysInMonth) {
+      setBirthDay(daysInMonth.toString().padStart(2, "0"))
+    }
+  }, [birthYear, birthMonth])
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -56,11 +105,12 @@ export default function SignupPage() {
       return
     }
 
-    // Validate birthday is provided
+    // Validate birthday is complete
+    const birthday = getBirthdayString()
     if (!birthday) {
       toast({
         title: "Birthday required",
-        description: "Please enter your birthday for horoscope features.",
+        description: "Please select your complete birth date for horoscope features.",
         variant: "destructive",
       })
       return
@@ -174,22 +224,56 @@ export default function SignupPage() {
                 className="h-9 border-purple-300/20 focus-visible:ring-purple-500/30"
               />
             </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="birthday">Birthday</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="birthday"
-                  type="date"
-                  placeholder="Select your birthday"
-                  value={birthday}
-                  onChange={(e) => setBirthday(e.target.value)}
-                  required
-                  className="h-9 pl-10 border-purple-300/20 focus-visible:ring-purple-500/30"
-                />
+              <Label>Birthday</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Select value={birthMonth} onValueChange={setBirthMonth}>
+                    <SelectTrigger className="h-9 border-purple-300/20 focus-visible:ring-purple-500/30">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {months.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Select value={birthDay} onValueChange={setBirthDay}>
+                    <SelectTrigger className="h-9 border-purple-300/20 focus-visible:ring-purple-500/30">
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {days.map((day) => (
+                        <SelectItem key={day} value={day}>
+                          {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Select value={birthYear} onValueChange={setBirthYear}>
+                    <SelectTrigger className="h-9 border-purple-300/20 focus-visible:ring-purple-500/30">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground">Required for horoscope features</p>
             </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input

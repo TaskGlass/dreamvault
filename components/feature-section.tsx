@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Brain, BookOpen, BarChart3, Mic, Sparkles, PaintBucket } from "lucide-react"
+import { Brain, BookOpen, BarChart3, Calendar, Sparkles, Compass } from "lucide-react"
 
 const features = [
   {
@@ -18,9 +18,9 @@ const features = [
     description: "Track mood patterns, recurring themes, and dream statistics over time.",
   },
   {
-    icon: Mic,
-    title: "Voice Input",
-    description: "Record your dreams with voice notes that are automatically transcribed and interpreted.",
+    icon: Calendar,
+    title: "Dream Patterns",
+    description: "Identify recurring patterns in your dreams and track how they change over time.",
   },
   {
     icon: Sparkles,
@@ -28,9 +28,9 @@ const features = [
     description: "Receive personalized affirmations connected to each dream interpretation.",
   },
   {
-    icon: PaintBucket,
-    title: "Dream Artwork",
-    description: "Get AI-generated artwork that visually represents your dream's essence.",
+    icon: Compass,
+    title: "Horoscope Integration",
+    description: "See how your dreams connect to your daily horoscope and astrological influences.",
   },
 ]
 

@@ -15,7 +15,7 @@ export function SiteHeader() {
           <Link href="/" className="flex items-center space-x-2">
             <span className="font-bold">DreamVault</span>
           </Link>
-          <nav className="hidden md:flex gap-6">
+          <nav className="hidden md:flex gap-8">
             <Link href="/#features" className="text-sm font-medium transition-colors hover:text-primary">
               Features
             </Link>
@@ -24,16 +24,16 @@ export function SiteHeader() {
             </Link>
           </nav>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           <MobileNav />
-          <nav className="hidden md:flex items-center gap-2">
+          <nav className="hidden md:flex items-center">
             {user ? (
               <Link href="/dashboard">
                 <Button size="sm">Dashboard</Button>
               </Link>
             ) : (
               <>
-                <Link href="/login">
+                <Link href="/login" className="mr-4">
                   <Button variant="ghost" size="sm">
                     Login
                   </Button>
