@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { CreditCard, Bell, User, Shield, Sparkles, Loader2, Check } from "lucide-react"
+import { CreditCard, Bell, User, Shield, Sparkles, Loader2, Check, Plus, X } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { getUserProfile } from "@/lib/dream-service"
 import { supabase } from "@/lib/supabase"
@@ -32,6 +34,15 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("")
   const [timezone, setTimezone] = useState("Pacific Time (UTC-8)")
 
+  // Payment form state
+  const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [cardNumber, setCardNumber] = useState("")
+  const [cardName, setCardName] = useState("")
+  const [expiryDate, setExpiryDate] = useState("")
+  const [cvv, setCvv] = useState("")
+  const [processingPayment, setProcessingPayment] = useState(false)
+  const [savedCards, setSavedCards] = useState<any[]>([])
+
   // Get user initials for avatar fallback
   const getInitials = () => {
     if (!fullName) return "DV"
@@ -53,6 +64,20 @@ export default function SettingsPage() {
         // Initialize form values
         setFullName(userProfile?.full_name || user.user_metadata?.full_name || "")
         setEmail(user.email || "")
+
+        // Mock saved cards for demo purposes
+        if (userProfile?.subscription_tier !== "free") {
+          setSavedCards([
+            {
+              id: "card_1",
+              last4: "4242",
+              brand: "Visa",
+              expMonth: "12",
+              expYear: "25",
+              isDefault: true,
+            },
+          ])
+        }
       } catch (error) {
         console.error("Error fetching profile:", error)
         toast({
@@ -105,6 +130,119 @@ export default function SettingsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleAddPaymentMethod = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validate form
+    if (!cardNumber || !cardName || !expiryDate || !cvv) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all payment details.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setProcessingPayment(true)
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // Add the new card to the saved cards
+      const newCard = {
+        id: `card_${Date.now()}`,
+        last4: cardNumber.slice(-4),
+        brand: getCardBrand(cardNumber),
+        expMonth: expiryDate.split("/")[0],
+        expYear: expiryDate.split("/")[1],
+        isDefault: savedCards.length === 0,
+      }
+
+      setSavedCards([...savedCards, newCard])
+
+      // Reset form
+      setCardNumber("")
+      setCardName("")
+      setExpiryDate("")
+      setCvv("")
+      setShowPaymentForm(false)
+
+      toast({
+        title: "Payment method added",
+        description: "Your payment method has been saved successfully.",
+      })
+    } catch (error) {
+      console.error("Error adding payment method:", error)
+      toast({
+        title: "Error",
+        description: "Failed to add payment method. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
+
+  const getCardBrand = (number: string) => {
+    const firstDigit = number.charAt(0)
+    if (firstDigit === "4") return "Visa"
+    if (firstDigit === "5") return "Mastercard"
+    if (firstDigit === "3") return "Amex"
+    if (firstDigit === "6") return "Discover"
+    return "Card"
+  }
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
+    const matches = v.match(/\d{4,16}/g)
+    const match = (matches && matches[0]) || ""
+    const parts = []
+
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4))
+    }
+
+    if (parts.length) {
+      return parts.join(" ")
+    } else {
+      return value
+    }
+  }
+
+  const formatExpiryDate = (value: string) => {
+    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "")
+
+    if (v.length >= 2) {
+      return `${v.substring(0, 2)}/${v.substring(2, 4)}`
+    }
+
+    return v
+  }
+
+  const handleRemoveCard = (cardId: string) => {
+    setSavedCards(savedCards.filter((card) => card.id !== cardId))
+
+    toast({
+      title: "Payment method removed",
+      description: "Your payment method has been removed successfully.",
+    })
+  }
+
+  const handleSetDefaultCard = (cardId: string) => {
+    setSavedCards(
+      savedCards.map((card) => ({
+        ...card,
+        isDefault: card.id === cardId,
+      })),
+    )
+
+    toast({
+      title: "Default payment method updated",
+      description: "Your default payment method has been updated.",
+    })
   }
 
   if (loading) {
@@ -302,7 +440,7 @@ export default function SettingsPage() {
                             <Check className="h-4 w-4 mr-2 text-green-500" /> Personalized affirmations
                           </li>
                           <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-green-500" /> AI-generated dream art
+                            <Check className="h-4 w-4 mr-2 text-green-500" /> Daily horoscope integration
                           </li>
                           <li className="flex items-center">
                             <Check className="h-4 w-4 mr-2 text-green-500" /> 24h support
@@ -316,7 +454,7 @@ export default function SettingsPage() {
                             <Check className="h-4 w-4 mr-2 text-green-500" /> 30 dreams per month
                           </li>
                           <li className="flex items-center">
-                            <Check className="h-4 w-4 mr-2 text-green-500" /> Voice input & transcription
+                            <Check className="h-4 w-4 mr-2 text-green-500" /> Advanced horoscope analysis
                           </li>
                           <li className="flex items-center">
                             <Check className="h-4 w-4 mr-2 text-green-500" /> Weekly dream summaries
@@ -354,32 +492,121 @@ export default function SettingsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5 text-purple-500" />
-                    Payment Method
+                    Payment Methods
                   </CardTitle>
                   <CardDescription>Manage your payment details</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {profile?.subscription_tier !== "free" ? (
-                    <div className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div className="rounded-md bg-background p-2 border">
-                          <CreditCard className="h-6 w-6" />
+                <CardContent className="space-y-4">
+                  {savedCards.length > 0 ? (
+                    <div className="space-y-4">
+                      {savedCards.map((card) => (
+                        <div key={card.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div className="flex items-center gap-4">
+                            <div className="rounded-md bg-background p-2 border">
+                              <CreditCard className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <div className="font-medium flex items-center gap-2">
+                                {card.brand} •••• {card.last4}
+                                {card.isDefault && (
+                                  <Badge variant="outline" className="ml-2 text-xs">
+                                    Default
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Expires {card.expMonth}/{card.expYear}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            {!card.isDefault && (
+                              <Button variant="outline" size="sm" onClick={() => handleSetDefaultCard(card.id)}>
+                                Set Default
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveCard(card.id)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium">•••• •••• •••• 4242</div>
-                          <div className="text-sm text-muted-foreground">Expires 12/25</div>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Edit
-                      </Button>
+                      ))}
                     </div>
                   ) : (
                     <div className="text-center py-6 text-muted-foreground">
                       <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>No payment method on file</p>
+                      <p>No payment methods on file</p>
                       <p className="text-sm mt-2">Add a payment method to upgrade your plan</p>
                     </div>
+                  )}
+
+                  {showPaymentForm ? (
+                    <div className="mt-6 border rounded-lg p-4">
+                      <h3 className="text-lg font-medium mb-4">Add Payment Method</h3>
+                      <form onSubmit={handleAddPaymentMethod} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="card-number">Card Number</Label>
+                          <Input
+                            id="card-number"
+                            placeholder="1234 5678 9012 3456"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                            maxLength={19}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="card-name">Cardholder Name</Label>
+                          <Input
+                            id="card-name"
+                            placeholder="John Doe"
+                            value={cardName}
+                            onChange={(e) => setCardName(e.target.value)}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="expiry">Expiry Date</Label>
+                            <Input
+                              id="expiry"
+                              placeholder="MM/YY"
+                              value={expiryDate}
+                              onChange={(e) => setExpiryDate(formatExpiryDate(e.target.value))}
+                              maxLength={5}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="cvv">CVV</Label>
+                            <Input
+                              id="cvv"
+                              placeholder="123"
+                              value={cvv}
+                              onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
+                              maxLength={4}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                          <Button type="button" variant="outline" onClick={() => setShowPaymentForm(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={processingPayment}>
+                            {processingPayment ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              "Save Card"
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  ) : (
+                    <Button onClick={() => setShowPaymentForm(true)} className="w-full mt-4" variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Payment Method
+                    </Button>
                   )}
                 </CardContent>
               </Card>
