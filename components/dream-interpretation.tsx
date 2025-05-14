@@ -5,10 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Brain, Sparkles, Save, Share2, ArrowLeft, Loader2, Star } from "lucide-react"
+import { Brain, Sparkles, Save, Share2, ArrowLeft, Loader2, Star, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { shareDreamContent } from "@/lib/dream-service"
 import { useAuth } from "@/hooks/use-auth"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface DreamInterpretationProps {
   interpretation: any
@@ -24,11 +25,12 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
   const [horoscope, setHoroscope] = useState<any>(null)
   const [zodiacSign, setZodiacSign] = useState<string>("")
   const [loadingHoroscope, setLoadingHoroscope] = useState(false)
+  const [horoscopeError, setHoroscopeError] = useState<string | null>(null)
   const [sharingAffirmation, setSharingAffirmation] = useState(false)
 
   useEffect(() => {
     // Generate horoscope when component mounts
-    if (interpretation && !horoscope && user) {
+    if (interpretation && !horoscope && !horoscopeError && user) {
       generateHoroscope()
     }
   }, [interpretation, user])
@@ -43,27 +45,43 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
     if (!interpretation || !user) return
 
     setLoadingHoroscope(true)
+    setHoroscopeError(null)
+
     try {
+      console.log("Generating horoscope for user:", user.id)
+
       const response = await fetch("/api/generate-horoscope", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ dreamText, interpretation, userId: user.id }),
+        body: JSON.stringify({
+          dreamText,
+          interpretation,
+          userId: user.id,
+        }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error("Failed to generate horoscope")
+        console.error("Horoscope generation failed:", data)
+        throw new Error(data.message || "Failed to generate horoscope")
       }
 
-      const data = await response.json()
+      if (data.error) {
+        throw new Error(data.message || "Error in horoscope generation")
+      }
+
+      console.log("Horoscope generated successfully:", data)
       setHoroscope(data.horoscope)
       setZodiacSign(data.zodiacSign)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating horoscope:", error)
+      setHoroscopeError(error.message || "Failed to generate horoscope. Please try again.")
       toast({
         title: "Error",
-        description: "Failed to generate horoscope. Please try again.",
+        description: error.message || "Failed to generate horoscope. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -255,6 +273,21 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="h-12 w-12 text-purple-500 animate-spin mb-4" />
                   <p className="text-muted-foreground">Consulting the stars...</p>
+                </div>
+              ) : horoscopeError ? (
+                <div className="py-6">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error generating horoscope</AlertTitle>
+                    <AlertDescription>
+                      {horoscopeError}
+                      <div className="mt-4">
+                        <Button onClick={generateHoroscope} variant="outline" size="sm">
+                          Try Again
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
                 </div>
               ) : horoscope ? (
                 <>

@@ -9,22 +9,32 @@ const openai = new OpenAI({
 
 // Helper function to get zodiac sign from birthday
 function getZodiacSign(birthday: string): string {
-  const date = new Date(birthday)
-  const month = date.getMonth() + 1 // getMonth() returns 0-11
-  const day = date.getDate()
+  try {
+    const date = new Date(birthday)
+    if (isNaN(date.getTime())) {
+      console.error("Invalid birthday format:", birthday)
+      return "Unknown"
+    }
 
-  if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries"
-  if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus"
-  if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini"
-  if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer"
-  if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo"
-  if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo"
-  if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra"
-  if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio"
-  if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius"
-  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn"
-  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius"
-  return "Pisces" // Feb 19 - Mar 20
+    const month = date.getMonth() + 1 // getMonth() returns 0-11
+    const day = date.getDate()
+
+    if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return "Aries"
+    if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return "Taurus"
+    if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return "Gemini"
+    if ((month === 6 && day >= 21) || (month === 7 && day <= 22)) return "Cancer"
+    if ((month === 7 && day >= 23) || (month === 8 && day <= 22)) return "Leo"
+    if ((month === 8 && day >= 23) || (month === 9 && day <= 22)) return "Virgo"
+    if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return "Libra"
+    if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return "Scorpio"
+    if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return "Sagittarius"
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return "Capricorn"
+    if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return "Aquarius"
+    return "Pisces" // Feb 19 - Mar 20
+  } catch (error) {
+    console.error("Error determining zodiac sign:", error)
+    return "Unknown"
+  }
 }
 
 export async function POST(request: Request) {
@@ -52,6 +62,8 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log("Fetching user profile for userId:", userId)
+
     // Get user's birthday from profile
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -59,18 +71,43 @@ export async function POST(request: Request) {
       .eq("user_id", userId)
       .single()
 
-    if (profileError || !profile || !profile.birthday) {
+    if (profileError) {
+      console.error("Error fetching profile:", profileError)
       return NextResponse.json(
         {
-          error: "Could not retrieve birthday",
+          error: "Could not retrieve profile",
+          message: "Error fetching user profile: " + profileError.message,
+        },
+        { status: 400 },
+      )
+    }
+
+    if (!profile || !profile.birthday) {
+      console.error("No birthday found in profile:", profile)
+      return NextResponse.json(
+        {
+          error: "Birthday not found",
           message: "Please make sure your birthday is set in your profile.",
         },
         { status: 400 },
       )
     }
 
+    console.log("Retrieved birthday:", profile.birthday)
+
     // Get zodiac sign from birthday
     const zodiacSign = getZodiacSign(profile.birthday)
+    console.log("Determined zodiac sign:", zodiacSign)
+
+    if (zodiacSign === "Unknown") {
+      return NextResponse.json(
+        {
+          error: "Invalid birthday format",
+          message: "Could not determine zodiac sign from birthday.",
+        },
+        { status: 400 },
+      )
+    }
 
     // Create a prompt for the horoscope interpretation
     const prompt = `Generate a personalized horoscope interpretation that connects the user's dream with their zodiac sign. 
@@ -94,6 +131,8 @@ export async function POST(request: Request) {
     
     Keep the tone positive, insightful, and empowering.`
 
+    console.log("Sending request to OpenAI")
+
     try {
       // Call the OpenAI API to generate the horoscope interpretation
       const response = await openai.chat.completions.create({
@@ -116,8 +155,11 @@ export async function POST(request: Request) {
       const horoscopeText = response.choices[0]?.message.content
 
       if (!horoscopeText) {
+        console.error("No response from OpenAI")
         return NextResponse.json({ error: "No horoscope was generated" }, { status: 500 })
       }
+
+      console.log("Received response from OpenAI:", horoscopeText.substring(0, 100) + "...")
 
       // Parse the JSON response
       try {
@@ -125,7 +167,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ horoscope, zodiacSign })
       } catch (parseError) {
         console.error("Error parsing horoscope JSON:", parseError)
-        return NextResponse.json({ error: "Invalid horoscope format" }, { status: 500 })
+        return NextResponse.json(
+          {
+            error: "Invalid horoscope format",
+            rawResponse: horoscopeText,
+          },
+          { status: 500 },
+        )
       }
     } catch (openaiError: any) {
       console.error("OpenAI API error:", openaiError)
