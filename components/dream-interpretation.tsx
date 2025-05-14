@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Brain, Sparkles, Save, Share2, ArrowLeft, Loader2, Star, AlertCircle } from "lucide-react"
+import { Brain, Sparkles, Save, Share2, ArrowLeft, Loader2, Star, AlertCircle, RefreshCw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { shareDreamContent } from "@/lib/dream-service"
 import { useAuth } from "@/hooks/use-auth"
@@ -27,13 +27,14 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
   const [loadingHoroscope, setLoadingHoroscope] = useState(false)
   const [horoscopeError, setHoroscopeError] = useState<string | null>(null)
   const [sharingAffirmation, setSharingAffirmation] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     // Generate horoscope when component mounts
     if (interpretation && !horoscope && !horoscopeError && user) {
       generateHoroscope()
     }
-  }, [interpretation, user])
+  }, [interpretation, user, retryCount])
 
   const handleSave = async () => {
     setSaving(true)
@@ -74,8 +75,22 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
       }
 
       console.log("Horoscope generated successfully:", data)
-      setHoroscope(data.horoscope)
-      setZodiacSign(data.zodiacSign)
+
+      if (data.horoscope) {
+        setHoroscope(data.horoscope)
+        setZodiacSign(data.zodiacSign || "Unknown")
+
+        // If there was a note, show it as a toast
+        if (data.note) {
+          toast({
+            title: "Horoscope Generated",
+            description: data.note,
+            variant: "default",
+          })
+        }
+      } else {
+        throw new Error("No horoscope data returned from the server")
+      }
     } catch (error: any) {
       console.error("Error generating horoscope:", error)
       setHoroscopeError(error.message || "Failed to generate horoscope. Please try again.")
@@ -87,6 +102,10 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
     } finally {
       setLoadingHoroscope(false)
     }
+  }
+
+  const handleRetry = () => {
+    setRetryCount((prev) => prev + 1)
   }
 
   const handleShareAffirmation = async () => {
@@ -282,7 +301,8 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
                     <AlertDescription>
                       {horoscopeError}
                       <div className="mt-4">
-                        <Button onClick={generateHoroscope} variant="outline" size="sm">
+                        <Button onClick={handleRetry} variant="outline" size="sm" className="gap-2">
+                          <RefreshCw className="h-4 w-4" />
                           Try Again
                         </Button>
                       </div>
@@ -329,7 +349,10 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Button onClick={generateHoroscope}>Generate Horoscope</Button>
+                  <Button onClick={generateHoroscope} className="gap-2">
+                    <Star className="h-4 w-4" />
+                    Generate Horoscope
+                  </Button>
                 </div>
               )}
             </CardContent>
