@@ -6,20 +6,17 @@ import { openai } from "@ai-sdk/openai"
 
 export async function POST(request: Request) {
   try {
-    const { dreamId, dreamContent, userId } = await request.json()
+    const { dreamId, dreamText, interpretation, userId } = await request.json()
 
-    if (!dreamId || !dreamContent || !userId) {
+    if (!dreamText || !userId) {
       return NextResponse.json(
-        { error: "Missing required parameters: dreamId, dreamContent, or userId" },
+        { error: "Missing required parameters: dreamText and userId" },
         { status: 400 },
       )
     }
 
-    console.log("Generating horoscope for dream:", dreamId)
-
     // Check if birthday column exists
     const birthdayColumnExists = await checkBirthdayColumn()
-
     if (!birthdayColumnExists) {
       return NextResponse.json(
         {
@@ -39,6 +36,33 @@ export async function POST(request: Request) {
 
     if (profileError) {
       console.error("Error fetching user profile:", profileError)
+      
+      // If profile doesn't exist, create one
+      if (profileError.code === 'PGRST116') {
+        const { error: createError } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: userId,
+            subscription_tier: "free",
+            dreams_count: 0,
+            dreams_limit: 5,
+            created_at: new Date().toISOString(),
+          })
+        
+        if (createError) {
+          console.error("Error creating profile:", createError)
+          return NextResponse.json(
+            { error: "Failed to create user profile", details: createError.message },
+            { status: 500 },
+          )
+        }
+        
+        return NextResponse.json(
+          { error: "Please update your profile with your birthday in settings to generate horoscopes." },
+          { status: 400 },
+        )
+      }
+      
       return NextResponse.json(
         { error: "Failed to fetch user profile", details: profileError.message },
         { status: 500 },
@@ -54,32 +78,27 @@ export async function POST(request: Request) {
 
     // Determine zodiac sign
     const zodiacSign = getZodiacSign(profile.birthday)
-
     if (!zodiacSign) {
       return NextResponse.json({ error: "Could not determine zodiac sign from birthday" }, { status: 400 })
     }
 
-    console.log("User zodiac sign:", zodiacSign)
-
     // Generate horoscope using OpenAI
     try {
       const { text } = await generateText({
-        model: openai("gpt-4o"),
+        model: openai("gpt-4"),
         prompt: `
-          Dream content: "${dreamContent}"
-          
+          Dream content: "${dreamText}"
+          ${interpretation ? `Dream interpretation: ${JSON.stringify(interpretation)}` : ""}
           Zodiac sign: ${zodiacSign}
-          
           Generate a personalized horoscope interpretation that connects this dream with the person's zodiac sign (${zodiacSign}).
           Explain how the dream symbols and themes relate to current astrological influences for ${zodiacSign}.
           Include insights about what this dream might be revealing about their current life path based on their astrological profile.
           Provide guidance on how they can use this dream insight in conjunction with their zodiac traits.
-          
           Format the response in JSON with the following structure:
           {
-            "zodiacSign": "${zodiacSign}",
-            "horoscope": "The full horoscope text",
-            "keyInsight": "A short key insight from the horoscope",
+            "dailyHoroscope": "A general daily horoscope for ${zodiacSign}",
+            "dreamConnection": "How this dream connects to your astrological profile",
+            "cosmicInsight": "A deeper cosmic insight about the dream's meaning",
             "advice": "Practical advice based on the dream and zodiac sign"
           }
         `,
@@ -91,23 +110,35 @@ export async function POST(request: Request) {
       let horoscopeData
       try {
         horoscopeData = JSON.parse(text)
-
         // Validate the structure
         if (
-          !horoscopeData.zodiacSign ||
-          !horoscopeData.horoscope ||
-          !horoscopeData.keyInsight ||
+          !horoscopeData.dailyHoroscope ||
+          !horoscopeData.dreamConnection ||
+          !horoscopeData.cosmicInsight ||
           !horoscopeData.advice
         ) {
           throw new Error("Response missing required fields")
         }
+        // Save the horoscope to the dream record if dreamId is provided
+        if (dreamId) {
+          const { error: updateError } = await supabase
+            .from("dreams")
+            .update({ horoscope: horoscopeData })
+            .eq("id", dreamId)
+          if (updateError) {
+            console.error("Error saving horoscope to dream:", updateError)
+            return NextResponse.json({ error: "Failed to save horoscope to dream", details: updateError }, { status: 500 })
+          }
+        }
+        return NextResponse.json({
+          horoscope: horoscopeData,
+          zodiacSign,
+        })
       } catch (parseError) {
         console.error("Error parsing horoscope response:", parseError)
         console.error("Raw response:", text)
         return NextResponse.json({ error: "Failed to parse horoscope response", details: parseError }, { status: 500 })
       }
-
-      return NextResponse.json(horoscopeData)
     } catch (aiError) {
       console.error("Error generating horoscope with AI:", aiError)
       return NextResponse.json({ error: "Failed to generate horoscope", details: aiError }, { status: 500 })

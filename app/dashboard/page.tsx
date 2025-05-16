@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { DreamCard } from "@/components/dream-card"
 import { InsightCard } from "@/components/insight-card"
-import { Plus, Brain, Sparkles, BookOpen, Calendar, Moon, Zap, Database, RefreshCw } from "lucide-react"
+import { Plus, Brain, Sparkles, BookOpen, Calendar, Moon, Zap, Database, RefreshCw, LogOut } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { getDreamsByUserId, getUserProfile } from "@/lib/dream-service"
@@ -17,9 +17,10 @@ import { useToast } from "@/hooks/use-toast"
 import { checkDatabaseTables, initializeDatabase, createUserProfile } from "@/lib/db-init"
 import { cn } from "@/lib/utils"
 import { useSupabaseClient } from "@supabase/auth-helpers-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 export default function DashboardPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { toast } = useToast()
   const [dreams, setDreams] = useState<Dream[]>([])
   const [profile, setProfile] = useState<any>(null)
@@ -255,7 +256,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-8 w-full min-w-0">
+    <div className="w-full space-y-6 pb-8 sm:pb-0">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Welcome to your dream journal</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={signOut} className="h-10 w-10">
+          <LogOut className="h-5 w-5" />
+        </Button>
+      </div>
       {/* Welcome section with user info */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-background/60 p-4 md:p-6 rounded-xl border border-purple-300/10 shadow-sm w-full min-w-0">
         <div className="flex items-center gap-4">
@@ -361,34 +371,19 @@ export default function DashboardPage() {
       {/* Tabs Container */}
       <div className="w-full min-w-0 bg-background/30 backdrop-blur-sm rounded-lg border border-purple-300/10 overflow-hidden">
         {/* Tab Buttons */}
-        <div className="flex w-full">
-          <button
-            onClick={() => setActiveTab("recent")}
-            className={cn(
-              "flex items-center justify-center gap-2 flex-1 py-3 px-4 text-sm font-medium transition-all",
-              activeTab === "recent" ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/50",
-            )}
-          >
-            <BookOpen className="h-4 w-4" />
-            <span>Recent Dreams</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("insights")}
-            className={cn(
-              "flex items-center justify-center gap-2 flex-1 py-3 px-4 text-sm font-medium transition-all",
-              activeTab === "insights"
-                ? "bg-background text-foreground"
-                : "text-muted-foreground hover:bg-background/50",
-            )}
-          >
-            <Sparkles className="h-4 w-4" />
-            <span>Insights</span>
-          </button>
-        </div>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "recent" | "insights")} className="w-full">
+          <TabsList className="grid grid-cols-2 mb-6">
+            <TabsTrigger value="recent" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              <span>Recent Dreams</span>
+            </TabsTrigger>
+            <TabsTrigger value="insights" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span>Insights</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Tab Content Container */}
-        <div className="w-full min-w-0">
-          {activeTab === "recent" && (
+          <TabsContent value="recent">
             <div className="p-4 md:p-6 w-full min-w-0">
               <div className="flex items-center justify-between mb-4 md:mb-6 w-full">
                 <h2 className="text-lg md:text-xl font-semibold">Recent Dreams</h2>
@@ -445,9 +440,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-          )}
+          </TabsContent>
 
-          {activeTab === "insights" && (
+          <TabsContent value="insights">
             <div className="p-4 md:p-6 w-full min-w-0">
               <div className="flex items-center justify-between mb-4 md:mb-6 w-full">
                 <h2 className="text-lg md:text-xl font-semibold">Dream Insights</h2>
@@ -502,8 +497,8 @@ export default function DashboardPage() {
                 />
               </div>
             </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Subscription Status */}

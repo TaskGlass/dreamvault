@@ -48,8 +48,6 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
     setHoroscopeError(null)
 
     try {
-      console.log("Generating horoscope for user:", user.id)
-
       const response = await fetch("/api/generate-horoscope", {
         method: "POST",
         headers: {
@@ -59,6 +57,7 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
           dreamText,
           interpretation,
           userId: user.id,
+          dreamId,
         }),
       })
 
@@ -73,7 +72,6 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
         throw new Error(data.message || "Error in horoscope generation")
       }
 
-      console.log("Horoscope generated successfully:", data)
       setHoroscope(data.horoscope)
       setZodiacSign(data.zodiacSign)
     } catch (error: any) {

@@ -106,10 +106,10 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-6 pb-8 sm:pb-0">
       <div>
-        <h1 className="text-3xl font-bold">Dream Insights</h1>
-        <p className="text-muted-foreground mt-2">Discover patterns and meanings in your dream journal</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Insights</h1>
+        <p className="text-muted-foreground mt-1">Discover patterns and insights from your dreams</p>
       </div>
 
       <Tabs defaultValue="themes" className="w-full">

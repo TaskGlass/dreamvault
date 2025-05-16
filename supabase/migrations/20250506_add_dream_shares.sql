@@ -1,6 +1,12 @@
 -- Add artwork_url column to dreams table
 ALTER TABLE public.dreams ADD COLUMN IF NOT EXISTS artwork_url TEXT;
 
+-- Add horoscope column to dreams table
+ALTER TABLE public.dreams ADD COLUMN IF NOT EXISTS horoscope JSONB;
+
+-- Comment on the column to explain its purpose
+COMMENT ON COLUMN public.dreams.horoscope IS 'Stores horoscope data for each dream';
+
 -- Create dream_shares table
 CREATE TABLE IF NOT EXISTS public.dream_shares (
     id TEXT PRIMARY KEY,

@@ -101,6 +101,7 @@ export interface Database {
           created_at: string
           avatar_url: string | null
           birthday: string | null
+          timezone: string | null
         }
         Insert: {
           id?: string
@@ -112,6 +113,7 @@ export interface Database {
           created_at?: string
           avatar_url?: string | null
           birthday?: string | null
+          timezone?: string | null
         }
         Update: {
           id?: string
@@ -123,6 +125,7 @@ export interface Database {
           created_at?: string
           avatar_url?: string | null
           birthday?: string | null
+          timezone?: string | null
         }
       }
     }

@@ -13,11 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { CreditCard, Bell, User, Shield, Sparkles, Loader2, Check, Plus, X } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
-import { getUserProfile } from "@/lib/dream-service"
+import { getUserProfile, updateUserProfile } from "@/lib/dream-service"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useProfile } from "@/hooks/use-profile"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function SettingsPage() {
   const searchParams = useSearchParams()
@@ -33,6 +34,19 @@ export default function SettingsPage() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [timezone, setTimezone] = useState("Pacific Time (UTC-8)")
+  const [birthYear, setBirthYear] = useState("")
+  const [birthMonth, setBirthMonth] = useState("")
+  const [birthDay, setBirthDay] = useState("")
+
+  // Generate arrays for select options
+  const years = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString())
+  const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'))
+  const getDaysInMonth = (year: string, month: string) => {
+    return new Date(parseInt(year), parseInt(month), 0).getDate()
+  }
+  const days = birthYear && birthMonth 
+    ? Array.from({ length: getDaysInMonth(birthYear, birthMonth) }, (_, i) => (i + 1).toString().padStart(2, '0'))
+    : Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'))
 
   // Payment form state
   const [showPaymentForm, setShowPaymentForm] = useState(false)
@@ -64,6 +78,15 @@ export default function SettingsPage() {
         // Initialize form values
         setFullName(userProfile?.full_name || user.user_metadata?.full_name || "")
         setEmail(user.email || "")
+        setTimezone(userProfile?.timezone || "Pacific Time (UTC-8)")
+        
+        // Parse birthday if it exists
+        if (userProfile?.birthday) {
+          const [year, month, day] = userProfile.birthday.split('-')
+          setBirthYear(year)
+          setBirthMonth(month)
+          setBirthDay(day)
+        }
 
         // Mock saved cards for demo purposes
         if (userProfile?.subscription_tier !== "free") {
@@ -98,20 +121,64 @@ export default function SettingsPage() {
 
     setSaving(true)
     try {
-      // Update profile in database
-      const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("user_id", user.id)
+      // Format birthday
+      const birthday = birthYear && birthMonth && birthDay 
+        ? new Date(`${birthYear}-${birthMonth}-${birthDay}`).toISOString().split('T')[0]
+        : null
 
-      if (error) throw error
+      // Log the data being sent
+      console.log("Attempting to save profile with:", {
+        user_id: user.id,
+        full_name: fullName,
+        birthday,
+        timezone
+      })
+
+      // Check if profile exists
+      const existingProfile = await getUserProfile(user.id)
+      console.log("Fetched user profile:", existingProfile)
+      
+      if (!existingProfile) {
+        // Create new profile if it doesn't exist
+        const { error: createError } = await supabase.from("profiles").insert({
+          user_id: user.id,
+          full_name: fullName,
+          birthday: birthday,
+          timezone: timezone,
+          subscription_tier: "free",
+          dreams_count: 0,
+          dreams_limit: 5,
+          created_at: new Date().toISOString(),
+        })
+        if (createError) {
+          console.error("Error creating profile:", createError, JSON.stringify(createError))
+          throw createError
+        }
+      } else {
+        // Update existing profile
+        const { success, error } = await updateUserProfile(user.id, {
+          full_name: fullName,
+          birthday: birthday,
+          timezone: timezone
+        })
+        console.log("updateUserProfile result:", { success, error })
+        if (!success) {
+          console.error("Error updating profile:", error, JSON.stringify(error))
+          throw error
+        }
+      }
 
       // Update user metadata
       const { error: updateError } = await supabase.auth.updateUser({
         data: { full_name: fullName },
       })
-
-      if (updateError) throw updateError
+      if (updateError) {
+        console.error("Error updating user metadata:", updateError, JSON.stringify(updateError))
+        throw updateError
+      }
 
       // Update local state
-      setProfile({ ...profile, full_name: fullName })
+      setProfile({ ...profile, full_name: fullName, birthday, timezone })
       if (refreshProfile) {
         await refreshProfile()
       }
@@ -121,7 +188,7 @@ export default function SettingsPage() {
         description: "Your profile information has been saved.",
       })
     } catch (error) {
-      console.error("Error saving profile:", error)
+      console.error("Error saving profile:", error, JSON.stringify(error))
       toast({
         title: "Error",
         description: "Failed to save your profile information.",
@@ -254,10 +321,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-6 pb-8 sm:pb-0">
       <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage your account and preferences</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Settings</h1>
+        <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
       </div>
 
       <Tabs defaultValue={defaultTab} className="w-full">
@@ -301,6 +368,48 @@ export default function SettingsPage() {
                     <Label htmlFor="email">Email</Label>
                     <Input id="email" type="email" value={email} disabled className="bg-muted/50" />
                     <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Birthday</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Select value={birthYear} onValueChange={setBirthYear}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={year}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={birthMonth} onValueChange={setBirthMonth}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {months.map((month) => (
+                            <SelectItem key={month} value={month}>
+                              {new Date(2000, parseInt(month) - 1).toLocaleString('default', { month: 'long' })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={birthDay} onValueChange={setBirthDay}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {days.map((day) => (
+                            <SelectItem key={day} value={day}>
+                              {day}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Required for horoscope features</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="timezone">Timezone</Label>

@@ -185,27 +185,27 @@ export default function DreamDetailPage() {
   })
 
   return (
-    <div className="w-full space-y-8">
-      <div className="flex flex-col sm:flex-row items-center justify-between">
-        <div className="flex items-center justify-center sm:justify-start w-full sm:w-auto">
+    <div className="w-full space-y-6 pb-8 sm:pb-0">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <Button variant="ghost" size="icon" asChild className="mr-2">
             <Link href="/dashboard/journal">
               <ArrowLeft className="h-5 w-5" />
             </Link>
           </Button>
-          <h1 className="text-2xl md:text-3xl font-bold text-center sm:text-left">{dream.title}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-left">{dream.title}</h1>
         </div>
         <Button
           variant="destructive"
           size="icon"
           onClick={handleDelete}
-          className={`mt-4 sm:mt-0 ${deleteConfirm ? "animate-pulse" : ""}`}
+          className={deleteConfirm ? "animate-pulse" : ""}
         >
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="flex items-center justify-center sm:justify-start text-sm text-muted-foreground">
+      <div className="flex items-center justify-start text-sm text-muted-foreground">
         <Calendar className="h-4 w-4 mr-2" />
         {formattedDate}
         {dream.mood && (
@@ -217,12 +217,12 @@ export default function DreamDetailPage() {
 
       <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 w-full">
         <CardHeader>
-          <CardTitle className="text-center sm:text-left">Dream Description</CardTitle>
+          <CardTitle className="text-left">Dream Description</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="whitespace-pre-wrap text-center sm:text-left">{dream.content}</p>
+          <p className="whitespace-pre-wrap text-left">{dream.content}</p>
           {dream.tags && dream.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-6 justify-center sm:justify-start">
+            <div className="flex flex-wrap gap-2 mt-6 justify-start">
               {dream.tags.map((tag) => (
                 <Badge key={tag} variant="secondary" className="text-xs">
                   {tag}
@@ -253,23 +253,23 @@ export default function DreamDetailPage() {
           <TabsContent value="interpretation">
             <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 w-full">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 justify-center sm:justify-start">
+                <CardTitle className="flex items-center gap-2 justify-start">
                   <Brain className="h-5 w-5 text-purple-500" />
                   Dream Interpretation
                 </CardTitle>
-                <CardDescription className="text-center sm:text-left">
+                <CardDescription className="text-left">
                   AI-powered analysis of your dream
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="font-medium mb-2 text-center sm:text-left">Summary</h3>
-                  <p className="text-muted-foreground text-center sm:text-left">{interpretation.summary}</p>
+                  <h3 className="font-medium mb-2 text-left">Summary</h3>
+                  <p className="text-muted-foreground text-left">{interpretation.summary}</p>
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2 text-center sm:text-left">Emotions</h3>
-                  <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                  <h3 className="font-medium mb-2 text-left">Emotions</h3>
+                  <div className="flex flex-wrap gap-2 justify-start">
                     {interpretation.emotions.map((emotion: string) => (
                       <Badge key={emotion} variant="secondary">
                         {emotion}
@@ -279,25 +279,25 @@ export default function DreamDetailPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2 text-center sm:text-left">Key Symbols</h3>
+                  <h3 className="font-medium mb-2 text-left">Key Symbols</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {interpretation.symbols.map((symbol: { name: string; meaning: string }) => (
                       <div key={symbol.name} className="border-l-2 border-purple-500 pl-3">
-                        <h4 className="font-medium text-center sm:text-left">{symbol.name}</h4>
-                        <p className="text-sm text-muted-foreground text-center sm:text-left">{symbol.meaning}</p>
+                        <h4 className="font-medium text-left">{symbol.name}</h4>
+                        <p className="text-sm text-muted-foreground text-left">{symbol.meaning}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2 text-center sm:text-left">Insights</h3>
-                  <p className="text-muted-foreground text-center sm:text-left">{interpretation.insights}</p>
+                  <h3 className="font-medium mb-2 text-left">Insights</h3>
+                  <p className="text-muted-foreground text-left">{interpretation.insights}</p>
                 </div>
 
                 <div>
-                  <h3 className="font-medium mb-2 text-center sm:text-left">Recommendations</h3>
-                  <p className="text-muted-foreground text-center sm:text-left">{interpretation.recommendations}</p>
+                  <h3 className="font-medium mb-2 text-left">Recommendations</h3>
+                  <p className="text-muted-foreground text-left">{interpretation.recommendations}</p>
                 </div>
               </CardContent>
             </Card>
@@ -306,23 +306,23 @@ export default function DreamDetailPage() {
           <TabsContent value="affirmation">
             <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 w-full">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 justify-center sm:justify-start">
+                <CardTitle className="flex items-center gap-2 justify-start">
                   <Sparkles className="h-5 w-5 text-purple-500" />
                   Dream Affirmation
                 </CardTitle>
-                <CardDescription className="text-center sm:text-left">
+                <CardDescription className="text-left">
                   Personalized affirmation based on your dream
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="relative max-w-md mx-auto text-center">
+              <CardContent className="flex flex-col items-start justify-center py-12">
+                <div className="relative w-full max-w-md">
                   <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
                   <div className="relative rounded-lg p-8 border border-purple-300/20 backdrop-blur-sm bg-background/80">
-                    <p className="text-xl font-medium italic">"{interpretation.affirmation}"</p>
+                    <p className="text-xl font-medium italic text-left">"{interpretation.affirmation}"</p>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-center sm:justify-end gap-2 border-t border-border/50 p-4">
+              <CardFooter className="flex justify-center gap-2 border-t border-border/50 p-4">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -344,23 +344,23 @@ export default function DreamDetailPage() {
           <TabsContent value="horoscope">
             <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 w-full">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 justify-center sm:justify-start">
+                <CardTitle className="flex items-center gap-2 justify-start">
                   <Star className="h-5 w-5 text-purple-500" />
                   Cosmic Dream Connection
                 </CardTitle>
-                <CardDescription className="text-center sm:text-left">
+                <CardDescription className="text-left">
                   How your dream relates to your daily horoscope
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {loadingHoroscope ? (
-                  <div className="flex flex-col items-center justify-center py-12">
+                  <div className="flex flex-col items-start justify-center py-12">
                     <Loader2 className="h-12 w-12 text-purple-500 animate-spin mb-4" />
                     <p className="text-muted-foreground">Consulting the stars...</p>
                   </div>
                 ) : horoscope ? (
                   <>
-                    <div className="flex items-center justify-center mb-6">
+                    <div className="flex items-start justify-start mb-6">
                       <div className="relative">
                         <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
                         <div className="relative rounded-full p-6 border border-purple-300/20 backdrop-blur-sm bg-background/80">
@@ -375,31 +375,31 @@ export default function DreamDetailPage() {
 
                     <div>
                       <h3 className="font-medium mb-2 text-sm text-muted-foreground">TODAY'S HOROSCOPE</h3>
-                      <p className="text-lg">{horoscope.dailyHoroscope}</p>
+                      <p className="text-lg text-left">{horoscope.dailyHoroscope}</p>
                     </div>
 
                     <div>
                       <h3 className="font-medium mb-2 text-sm text-muted-foreground">DREAM & STARS CONNECTION</h3>
-                      <p className="text-muted-foreground">{horoscope.dreamConnection}</p>
+                      <p className="text-muted-foreground text-left">{horoscope.dreamConnection}</p>
                     </div>
 
                     <div>
                       <h3 className="font-medium mb-2 text-sm text-muted-foreground">COSMIC INSIGHT</h3>
-                      <p className="text-muted-foreground">{horoscope.cosmicInsight}</p>
+                      <p className="text-muted-foreground text-left">{horoscope.cosmicInsight}</p>
                     </div>
 
                     <div className="relative">
                       <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-purple-500/30 to-indigo-500/30 opacity-75 blur"></div>
                       <div className="relative rounded-lg p-6 border border-purple-300/20 backdrop-blur-sm bg-background/80">
-                        <h3 className="font-medium mb-2 text-center">ASTROLOGICAL ADVICE</h3>
-                        <p className="text-center italic">{horoscope.advice}</p>
+                        <h3 className="font-medium mb-2 text-left">ASTROLOGICAL ADVICE</h3>
+                        <p className="text-left italic">{horoscope.advice}</p>
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <div className="bg-muted/30 rounded-lg p-8 mb-6 text-center">
-                      <PlusCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <div className="flex flex-col items-start justify-center py-12">
+                    <div className="bg-muted/30 rounded-lg p-8 mb-6 text-left">
+                      <PlusCircle className="h-12 w-12 text-muted-foreground mb-4" />
                       <p className="text-muted-foreground mb-4">No horoscope has been generated for this dream yet.</p>
                       <Button onClick={generateHoroscope}>Generate Horoscope</Button>
                     </div>

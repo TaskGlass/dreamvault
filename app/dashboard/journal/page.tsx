@@ -252,7 +252,7 @@ export default function JournalPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 space-y-4 mb-0">
+        <div className="text-left py-12 space-y-4 mb-0">
           {dreams.length > 0 ? (
             <>
               <div className="rounded-full bg-purple-500/10 p-3 inline-flex">

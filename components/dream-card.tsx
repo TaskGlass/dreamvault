@@ -41,20 +41,20 @@ export function DreamCard({ dream }: DreamCardProps) {
     <Card className="border border-purple-300/20 backdrop-blur-sm bg-background/80 overflow-hidden hover:shadow-md hover:shadow-purple-500/5 transition-all duration-300 h-full flex flex-col">
       <CardHeader className="pb-2 md:pb-3">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base md:text-lg line-clamp-1">{dream.title}</CardTitle>
+          <CardTitle className="text-base md:text-lg line-clamp-1 text-left">{dream.title}</CardTitle>
           <Badge variant="outline" className={getMoodColor(dream.mood)}>
             {dream.mood}
           </Badge>
         </div>
-        <div className="flex items-center text-xs text-muted-foreground mt-1">
+        <div className="flex items-center text-xs text-muted-foreground mt-1 text-left">
           <Calendar className="h-3 w-3 mr-1" />
           {dream.date}
         </div>
       </CardHeader>
       <CardContent className="flex-grow pt-0">
-        <p className="text-xs md:text-sm text-muted-foreground line-clamp-3 mt-2">{dream.summary}</p>
+        <p className="text-xs md:text-sm text-muted-foreground line-clamp-3 mt-2 text-left">{dream.summary}</p>
         {dream.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3 md:mt-4">
+          <div className="flex flex-wrap gap-1.5 mt-3 md:mt-4 justify-start">
             {dream.tags.slice(0, 3).map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs px-2 py-0 h-5">
                 {tag}

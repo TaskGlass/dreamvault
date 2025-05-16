@@ -367,16 +367,19 @@ export async function updateUserProfile(
       }
     }
 
-    const { error } = await supabase.from("profiles").update(updates).eq("user_id", userId)
+    // Log the update payload
+    console.log("updateUserProfile: updating user_id", userId, "with", updates)
+    const { data, error } = await supabase.from("profiles").update(updates).eq("user_id", userId)
+    console.log("updateUserProfile: supabase response", { data, error })
 
     if (error) {
-      console.error("Error updating user profile:", error)
+      console.error("Error updating user profile:", error, JSON.stringify(error))
       return { success: false, error }
     }
 
     return { success: true, error: null }
   } catch (error) {
-    console.error("Unexpected error in updateUserProfile:", error)
+    console.error("Unexpected error in updateUserProfile:", error, JSON.stringify(error))
     return { success: false, error }
   }
 }

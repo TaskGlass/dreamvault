@@ -137,6 +137,34 @@ export default function InterpretDreamPage() {
         throw error
       }
 
+      // Generate horoscope after dream is saved
+      if (dream) {
+        try {
+          const horoscopeResponse = await fetch("/api/generate-horoscope", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              dreamId: dream.id,
+              dreamText,
+              interpretation,
+              userId: user.id,
+            }),
+          })
+          if (!horoscopeResponse.ok) {
+            const data = await horoscopeResponse.json()
+            throw new Error(data.error || data.message || "Failed to generate horoscope")
+          }
+        } catch (err) {
+          toast({
+            title: "Horoscope Error",
+            description: err instanceof Error ? err.message : "Failed to generate horoscope.",
+            variant: "destructive",
+          })
+        }
+      }
+
       toast({
         title: "Dream saved",
         description: "Your dream has been saved to your journal.",

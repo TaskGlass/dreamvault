@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 import { useAuth } from "@/hooks/use-auth"
 
 export function MobileNav() {
@@ -31,11 +31,12 @@ export function MobileNav() {
           variant="ghost"
           className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
         >
-          <Menu className="h-8 w-8" /> {/* Increased size from h-6 w-6 to h-8 w-8 */}
+          <Menu className="h-8 w-8 scale-150" /> {/* Increased scale from 125 to 150 */}
           <span className="sr-only">Toggle Menu</span>
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="pr-0">
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         <div className="px-7">
           <Link href="/" className="flex items-center" onClick={handleLinkClick}>
             <span className="font-bold">DreamVault</span>

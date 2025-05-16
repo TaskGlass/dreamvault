@@ -1,0 +1,11 @@
+[auth]
+site_url = "https://v0-dream-vault-app.vercel.app/"
+additional_redirect_urls = ["https://v0-dream-vault-app-support-norricos-projects.vercel.app/", "https://v0-dream-vault-app-support-norricos-projects.vercel.app/**", "https://v0-*-dream-vault-app-support-norricos-projects.vercel.app", "https://v0-*-dream-vault-app-support-norricos-projects.vercel.app/**"]
+sign_in_sign_ups = 100
+enroll_enabled = true
+verify_enabled = true
+timebox = "1s"
+inactivity_timeout = "1s"
+enable_confirmations = true
+max_frequency = "1m0s"
+otp_expiry = 86400 
