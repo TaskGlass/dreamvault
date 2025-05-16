@@ -31,7 +31,7 @@ export function HeroSection() {
         <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 opacity-75 blur"></div>
         <div className="relative rounded-2xl overflow-hidden border border-purple-300/20 backdrop-blur-sm bg-background/80">
           <img
-            src="/images/dream-interface.jpeg"
+            src="/images/dreamvault new dream.jpg"
             alt="DreamVault dream interpretation interface"
             className="w-full h-auto"
           />
