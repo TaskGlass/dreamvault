@@ -207,7 +207,7 @@ export default function InterpretDreamPage() {
   }
 
   return (
-    <div className="space-y-8 w-full min-w-0 flex-1">
+    <div className="space-y-8 w-full min-w-0 flex-1 pb-8 sm:pb-0">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold">Interpret Your Dream</h1>
         <p className="text-muted-foreground mt-2">Share your dream and receive AI-powered insights</p>
