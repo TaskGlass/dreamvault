@@ -69,13 +69,14 @@ export async function initializeDatabase() {
   }
 }
 
-export async function createUserProfile(userId: string, fullName = "") {
+export async function createUserProfile(userId: string, fullName = "", birthday?: string) {
   try {
     const { data, error } = await supabase
       .from("profiles")
       .insert({
         user_id: userId,
         full_name: fullName,
+        birthday: birthday || null,
         subscription_tier: "free",
         dreams_count: 0,
         dreams_limit: 5,

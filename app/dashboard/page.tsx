@@ -56,7 +56,8 @@ export default function DashboardPage() {
         if (!userProfile) {
           console.log("Creating new profile for user:", user.id)
           const fullName = user.user_metadata?.full_name || ""
-          const { success } = await createUserProfile(user.id, fullName)
+          const birthday = user.user_metadata?.birthday || null
+          const { success } = await createUserProfile(user.id, fullName, birthday)
 
           if (success) {
             userProfile = await getUserProfile(user.id)
@@ -66,7 +67,7 @@ export default function DashboardPage() {
         }
 
         // Check if avatar URL is valid and fix if needed
-        if (userProfile && userProfile.avatar_url) {
+        if (userProfile && 'avatar_url' in userProfile && userProfile.avatar_url) {
           // If avatar URL is extremely long (likely a corrupted base64), reset it
           if (typeof userProfile.avatar_url === "string" && userProfile.avatar_url.length > 1000000) {
             console.warn("Avatar URL is too long, resetting it")
@@ -81,7 +82,9 @@ export default function DashboardPage() {
             })
 
             // Update local profile
-            userProfile.avatar_url = null
+            if (userProfile) {
+              userProfile = { ...userProfile, avatar_url: null }
+            }
           }
         }
 
@@ -113,7 +116,7 @@ export default function DashboardPage() {
         title: "Profile picture reset",
         description:
           "We detected an issue with your profile picture and have reset it. You can upload a new one in settings.",
-        variant: "warning",
+        variant: "destructive",
       })
     }
   }, [avatarError, toast])
@@ -132,7 +135,7 @@ export default function DashboardPage() {
         })
 
         // Create a profile for the user
-        await createUserProfile(user.id, user.user_metadata?.full_name || "")
+        await createUserProfile(user.id, user.user_metadata?.full_name || "", user.user_metadata?.birthday || null)
 
         // Refresh the data
         const [userDreams, userProfile] = await Promise.all([getDreamsByUserId(user.id), getUserProfile(user.id)])
@@ -227,7 +230,7 @@ export default function DashboardPage() {
         <p className="text-muted-foreground mb-6">
           It looks like the database tables for DreamVault haven't been created yet.
         </p>
-        <Alert variant="warning" className="mb-6 bg-amber-500/10 border-amber-500/50">
+        <Alert variant="destructive" className="mb-6 bg-amber-500/10 border-amber-500/50">
           <AlertTitle>First-time setup</AlertTitle>
           <AlertDescription>
             This is a one-time setup process that will create the necessary database tables for DreamVault to work

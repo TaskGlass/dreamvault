@@ -15,6 +15,7 @@ export async function POST() {
         dreams_limit INTEGER NOT NULL DEFAULT 5,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
         avatar_url TEXT,
+        birthday DATE,
         UNIQUE(user_id)
       );
 
@@ -59,7 +60,7 @@ export async function POST() {
     `
 
     // Execute the SQL to create tables
-    const { error: createTablesError } = await supabase.sql(createTablesSQL)
+    const { error: createTablesError } = await supabase.rpc('exec_sql', { sql: createTablesSQL })
 
     if (createTablesError) {
       console.error("Error creating tables:", createTablesError)
@@ -132,7 +133,7 @@ export async function POST() {
     `
 
     // Execute the SQL to create policies
-    const { error: createPoliciesError } = await supabase.sql(createPoliciesSQL)
+    const { error: createPoliciesError } = await supabase.rpc('exec_sql', { sql: createPoliciesSQL })
 
     if (createPoliciesError) {
       console.error("Error creating policies:", createPoliciesError)
