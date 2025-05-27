@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,58 +28,81 @@ export function DreamInterpretation({ interpretation, dreamText, onSave, dreamId
   const [horoscopeError, setHoroscopeError] = useState<string | null>(null)
   const [sharingAffirmation, setSharingAffirmation] = useState(false)
 
-  useEffect(() => {
-    // Generate horoscope when component mounts
-    if (interpretation && !horoscope && !horoscopeError && user) {
-      generateHoroscope()
-    }
-  }, [interpretation, user])
-
   const handleSave = async () => {
     setSaving(true)
-    await onSave()
-    setSaving(false)
+    try {
+      await onSave()
+      // Generate horoscope after successful save
+      await generateHoroscope()
+    } catch (error) {
+      console.error("Error saving dream:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save your dream. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const generateHoroscope = async () => {
-    if (!interpretation || !user) return
+    if (!interpretation || !user) {
+      console.log("Missing required data:", { interpretation: !!interpretation, user: !!user })
+      return
+    }
 
     setLoadingHoroscope(true)
     setHoroscopeError(null)
 
     try {
+      console.log("Generating horoscope for user:", user.id)
+      const requestData = {
+        dreamText,
+        interpretation,
+        userId: user.id,
+        dreamId,
+      }
+      console.log("Request data:", requestData)
+
       const response = await fetch("/api/generate-horoscope", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          dreamText,
-          interpretation,
-          userId: user.id,
-          dreamId,
-        }),
+        body: JSON.stringify(requestData),
       })
 
       const data = await response.json()
+      console.log("Horoscope response:", data)
 
       if (!response.ok) {
         console.error("Horoscope generation failed:", data)
+        if (data.message === "Please set your birthday in settings to generate horoscopes") {
+          toast({
+            title: "Birthday Required",
+            description: "Please set your birthday in settings to generate horoscopes",
+            variant: "destructive",
+          })
+          return
+        }
         throw new Error(data.message || "Failed to generate horoscope")
       }
 
-      if (data.error) {
-        throw new Error(data.message || "Error in horoscope generation")
+      if (!data.horoscope || !data.zodiacSign) {
+        console.error("Invalid horoscope response:", data)
+        throw new Error("Invalid horoscope response format")
       }
 
       setHoroscope(data.horoscope)
       setZodiacSign(data.zodiacSign)
     } catch (error: any) {
       console.error("Error generating horoscope:", error)
-      setHoroscopeError(error.message || "Failed to generate horoscope. Please try again.")
+      const errorMessage = error.message || "Failed to generate horoscope. Please try again."
+      setHoroscopeError(errorMessage)
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate horoscope. Please try again.",
+        title: "Horoscope Generation",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

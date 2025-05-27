@@ -10,7 +10,12 @@ const plans = [
     price: "$0",
     period: "month",
     description: "Perfect for casual dream explorers",
-    features: ["5 dreams per month", "Basic text interpretation", "Save dreams", "72h email support"],
+    features: [
+      "5 dreams per month",
+      "Basic text interpretation",
+      "Save dreams",
+      "72h email support",
+    ],
     cta: "Get Started",
     href: "/signup?plan=free",
     highlight: false,

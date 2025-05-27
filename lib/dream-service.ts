@@ -206,16 +206,30 @@ export async function createDream(
 
     // Update user's dream count - Fixed approach
     try {
-      // First, get the current profile
+      // First, check if we need to reset the dreams count
+      const resetResult = await resetDreamsCountIfNeeded(userId)
+      if (!resetResult.success) {
+        console.error("Error checking/resetting dreams count:", resetResult.error)
+      }
+
+      // Then get the current profile
       const { data: profile, error: fetchError } = await supabase
         .from("profiles")
-        .select("dreams_count")
+        .select("dreams_count, dreams_limit")
         .eq("user_id", userId)
         .single()
 
       if (fetchError) {
         console.error("Error fetching profile:", fetchError)
       } else {
+        // Check if user has reached their limit
+        if (profile.dreams_count >= profile.dreams_limit) {
+          return {
+            dream: null,
+            error: new Error(`You've reached your monthly limit of ${profile.dreams_limit} dream interpretations. Please upgrade your plan for more.`)
+          }
+        }
+
         // Calculate new count (handle case where dreams_count might be null)
         const currentCount = profile?.dreams_count || 0
         const newCount = currentCount + 1
@@ -539,4 +553,39 @@ export async function addBirthdayColumn(): Promise<{ success: boolean; error: an
     console.error("Unexpected error adding birthday column:", error)
     return { success: false, error }
   }
+}
+
+export async function resetDreamsCountIfNeeded(userId: string) {
+  // Fetch the user's profile
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("dreams_count, dreams_limit, last_dreams_reset")
+    .eq("user_id", userId)
+    .single()
+
+  if (error || !profile) {
+    console.error("Error fetching profile for reset check:", error)
+    return { success: false, error }
+  }
+
+  const lastReset = new Date(profile.last_dreams_reset)
+  const now = new Date()
+  // Calculate the next reset date (1 month after last reset)
+  const nextReset = new Date(lastReset)
+  nextReset.setMonth(nextReset.getMonth() + 1)
+
+  if (now >= nextReset) {
+    // Reset dreams_count and update last_dreams_reset
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ dreams_count: 0, last_dreams_reset: now.toISOString() })
+      .eq("user_id", userId)
+
+    if (updateError) {
+      console.error("Error resetting dreams_count:", updateError)
+      return { success: false, error: updateError }
+    }
+    return { success: true, reset: true }
+  }
+  return { success: true, reset: false }
 }

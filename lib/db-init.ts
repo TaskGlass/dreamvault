@@ -69,18 +69,23 @@ export async function initializeDatabase() {
   }
 }
 
-export async function createUserProfile(userId: string, fullName = "", birthday?: string) {
+export async function createUserProfile(userId: string, fullName = "", birthday?: string, subscriptionTier: "free" | "starter" | "pro" = "free") {
   try {
+    // Set dreams_limit based on subscription tier
+    const dreamsLimit = subscriptionTier === "pro" ? 30 : subscriptionTier === "starter" ? 15 : 5;
+    const createdAt = new Date().toISOString();
+
     const { data, error } = await supabase
       .from("profiles")
       .insert({
         user_id: userId,
         full_name: fullName,
         birthday: birthday || null,
-        subscription_tier: "free",
+        subscription_tier: subscriptionTier,
         dreams_count: 0,
-        dreams_limit: 5,
-        created_at: new Date().toISOString(),
+        dreams_limit: dreamsLimit,
+        created_at: createdAt,
+        last_dreams_reset: createdAt,
       })
       .select()
 

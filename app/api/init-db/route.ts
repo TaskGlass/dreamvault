@@ -5,6 +5,17 @@ export async function POST() {
   try {
     // Direct SQL to create tables without using stored procedures
     const createTablesSQL = `
+      -- Create exec_sql function if it doesn't exist
+      CREATE OR REPLACE FUNCTION exec_sql(sql text)
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      AS $$
+      BEGIN
+        EXECUTE sql;
+      END;
+      $$;
+
       -- Create profiles table if it doesn't exist
       CREATE TABLE IF NOT EXISTS public.profiles (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -16,6 +27,7 @@ export async function POST() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
         avatar_url TEXT,
         birthday DATE,
+        last_dreams_reset TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         UNIQUE(user_id)
       );
 
